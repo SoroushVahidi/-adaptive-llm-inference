@@ -1,0 +1,26 @@
+dataset:
+  name: gsm8k
+  split: test
+  max_samples: 30
+
+model:
+  name: gpt-4o-mini
+  greedy_temperature: 0.0
+  sample_temperature: 0.7
+  max_tokens: 128
+  timeout_seconds: 60
+
+mode_then_budget:
+  total_budget: 50
+  reasoning_total_k: 3
+  use_reasoning_probe: true
+  weight_parse_failure: 2.0
+  weight_malformed_output: 1.0
+  weight_low_confidence_format: 1.0
+  weight_direct_reasoning_disagreement: 1.5
+  min_switch_score: 1.5
+  strict_routing: false
+
+include_selective_escalation_v1: true
+
+output_dir: outputs/mode_then_budget

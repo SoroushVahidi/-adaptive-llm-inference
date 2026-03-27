@@ -1,0 +1,23 @@
+dataset:
+  name: gsm8k
+  split: test
+  max_samples: 50
+
+model:
+  type: dummy
+  correct_prob: 0.3
+  seed: 42
+
+baselines:
+  - greedy
+  - best_of_n
+  - self_consistency
+
+budgets: [50, 100, 150, 250]
+
+# For non-greedy baselines, use max(n_samples, budget // n_queries) per query,
+# matching the current experiment-path convention of treating budget as total
+# sample count under equal allocation.
+n_samples: 5
+
+output_dir: outputs/real_budget_sweep

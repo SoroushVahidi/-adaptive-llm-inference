@@ -1,0 +1,24 @@
+synthetic:
+  n_queries: 120
+  n_levels: 6
+  curve_family: mixed_difficulty
+  costs: [0, 1, 2, 4, 7, 11]
+  seed: 7
+
+allocators:
+  - equal
+  - mckp
+
+budgets: [180, 240, 300, 360]
+
+noise:
+  enabled: true
+  budget: 300
+  preserve_monotonicity: true
+  levels:
+    - no_noise
+    - small_gaussian
+    - medium_gaussian
+    - large_gaussian
+
+output_prefix: outputs/simulated_sweep
