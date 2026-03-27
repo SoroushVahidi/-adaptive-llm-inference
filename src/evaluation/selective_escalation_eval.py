@@ -204,7 +204,9 @@ def _run_selective(
                 "first_pass_correct": first_correct,
                 "escalation_score": float(item["escalation_score"]),
                 "used_second_sample_for_gating": bool(item["used_second_sample_for_gating"]),
-                "escalated_beyond_gating": bool(item["escalated_beyond_gating"]),
+                "escalated_beyond_gating": bool(
+                    item["escalated_beyond_gating_stage"]
+                ),
                 "final_answer": item["final_answer"],
                 "final_correct": final_correct,
                 "samples_used": int(item["samples_used"]),
@@ -423,8 +425,10 @@ def format_selective_summary(result: dict[str, Any], paths: dict[str, str]) -> s
             f"{summary['method']}: accuracy={summary['accuracy']:.4f}, "
             f"total_samples={summary['total_samples_used']}, "
             f"avg_samples/query={summary['average_samples_per_query']:.2f}, "
-            f"queries_escalated={summary['queries_escalated']}, "
-            f"fraction_escalated={summary['fraction_escalated']:.4f}"
+            "queries_with_more_than_1_sample="
+            f"{summary['queries_with_more_than_1_sample']}, "
+            "queries_escalated_beyond_gating="
+            f"{summary['queries_escalated_beyond_gating_stage']}"
         )
 
     pairwise = result["pairwise_comparisons"]
@@ -436,7 +440,8 @@ def format_selective_summary(result: dict[str, Any], paths: dict[str, str]) -> s
             f"improved={pairwise['normalization_only_vs_greedy']['queries_improved']}, "
             f"worsened={pairwise['normalization_only_vs_greedy']['queries_worsened']}",
             "  two_sample_gate_only vs normalization_only: "
-            f"improved={pairwise['two_sample_gate_only_vs_normalization_only']['queries_improved']}, "
+            "improved="
+            f"{pairwise['two_sample_gate_only_vs_normalization_only']['queries_improved']}, "
             f"worsened={pairwise['two_sample_gate_only_vs_normalization_only']['queries_worsened']}",
             "  selective vs greedy: "
             f"improved={pairwise['selective_vs_greedy']['queries_improved']}, "

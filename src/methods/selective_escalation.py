@@ -14,9 +14,9 @@ The method is intentionally conservative:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-import re
 from typing import Any
 
 from src.models.openai_llm import OpenAILLMModel
@@ -244,6 +244,9 @@ def run_selective_escalation(
                 "normalization_changed_first_pass_answer": (
                     first_details["raw_extracted_answer"] != first_parsed
                 ),
+                "normalization_changed_correctness": (
+                    first_details["raw_extracted_answer"] != first_parsed
+                ),
                 "used_second_sample_for_gating": used_second_sample_for_gating,
                 "second_sample_answer": second_parsed,
                 "second_sample_raw_output": second_output,
@@ -258,6 +261,9 @@ def run_selective_escalation(
                     )
                 },
                 "gating_stage_answers": list(candidate_answers),
+                "gating_answer": _majority_vote(candidate_answers),
+                "gating_samples_used": len(candidate_answers),
+                "best_of_3_answer": _majority_vote(candidate_answers),
                 "candidate_answers": candidate_answers,
                 "samples_used": len(candidate_answers),
                 "used_more_than_1_sample": len(candidate_answers) > 1,
@@ -318,6 +324,9 @@ def run_selective_escalation(
             int(bool(item["used_more_than_1_sample"])) for item in diagnostics
         ),
         "queries_escalated_beyond_gating_stage": sum(
+            int(bool(item["escalated_beyond_gating_stage"])) for item in diagnostics
+        ),
+        "queries_escalated": sum(
             int(bool(item["escalated_beyond_gating_stage"])) for item in diagnostics
         ),
     }

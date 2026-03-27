@@ -92,6 +92,9 @@ def test_run_selective_escalation_returns_expected_structure() -> None:
 
     assert len(result["diagnostics"]) == 2
     assert result["total_samples_used"] >= 2
-    assert result["queries_escalated"] >= 0
-    assert result["queries_with_more_than_1_sample"] >= result["queries_escalated"]
+    assert result["queries_escalated_beyond_gating_stage"] >= 0
+    assert (
+        result["queries_with_more_than_1_sample"]
+        >= result["queries_escalated_beyond_gating_stage"]
+    )
     assert result["queries_escalated_beyond_gating_stage"] >= 0
