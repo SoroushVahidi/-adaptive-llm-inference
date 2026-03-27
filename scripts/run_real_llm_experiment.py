@@ -19,7 +19,6 @@ from src.evaluation.logger import ExperimentLogger
 from src.models.llm_model import OpenAICompatibleLLMModel
 from src.utils.config import load_config
 
-
 BASELINES = {
     "greedy": GreedyBaseline,
     "best_of_n": BestOfNBaseline,
@@ -50,7 +49,7 @@ def run(config: dict[str, Any]) -> dict[str, Any]:
         )
 
     model = OpenAICompatibleLLMModel(
-        model_name=str(model_cfg["model_name"]),
+        model_name=str(model_cfg["name"]),
         base_url=model_cfg.get("base_url"),
         system_prompt=model_cfg.get("system_prompt"),
         greedy_temperature=float(model_cfg.get("greedy_temperature", 0.0)),
