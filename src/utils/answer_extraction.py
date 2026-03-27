@@ -76,7 +76,8 @@ def extract_numeric_answer(text: str) -> str:
        ``Therefore``, or ``Thus``.
     3. Otherwise inspect the final non-empty lines.
     4. Fall back to the last number anywhere in the text.
-    5. If no number exists, return the stripped raw text.
+    5. If no number exists, return an empty string so evaluation can treat it as
+       an extraction failure.
     """
     stripped = text.strip()
     if not stripped:
@@ -93,4 +94,4 @@ def extract_numeric_answer(text: str) -> str:
         if answer:
             return answer
 
-    return stripped
+    return ""
