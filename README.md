@@ -114,6 +114,17 @@ This writes JSON/CSV summaries under `outputs/real_budget_sweep/`. The current
 path uses the existing dummy/local model stack, so the results are useful for
 pipeline validation and budget accounting rather than final real-model claims.
 
+For a minimal real-LLM validation run on GSM8K:
+
+```bash
+# run greedy and best-of-N with an OpenAI-compatible API backend
+python3 scripts/run_real_llm_experiment.py --config configs/real_llm_gsm8k.yaml
+```
+
+This writes per-query logs and summary JSON under `outputs/real_llm/`. A real
+OpenAI-compatible API key is required for actual LLM execution; the local stub
+mode exists only for lightweight tests.
+
 ## Tests & Linting
 
 ```bash
