@@ -1,0 +1,15 @@
+dataset:
+  name: gsm8k
+  split: test
+  max_samples: 50
+
+model:
+  type: dummy
+  correct_prob: 0.3
+  seed: 42
+
+baseline: self_consistency
+n_samples: 5
+budget: 250
+
+output: outputs/self_consistency_results.json

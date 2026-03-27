@@ -4,20 +4,30 @@
 
 ### Repository Overview
 
-This is the **adaptive-llm-inference** repository — an MIT-licensed Python project by Soroush Vahidi. As of initial setup, the repo contains only a `LICENSE` file with no application code, dependencies, or configuration.
+**adaptive-llm-inference** — Adaptive test-time compute allocation for LLM reasoning under budget constraints. Python research codebase with a modular pipeline: datasets → models → baselines/allocators → evaluation.
 
 ### Development Environment
 
-- **Python 3.12.3** is available system-wide at `python3`.
-- No virtual environment or dependency file (`requirements.txt`, `pyproject.toml`, `setup.py`) exists yet. When one is added, the update script should be updated to install from it.
-- No linter, test framework, or build system is configured yet.
+- **Python 3.12** (system `python3`); no `python` symlink — always use `python3`.
+- Install: `pip install -e ".[dev]"` from repo root.
+- Add `$HOME/.local/bin` to `PATH` if `pytest` / `ruff` are not found after install.
 
-### Running Services
+### Key Commands
 
-There are no services to run. When application code is added, update this section with startup instructions.
+| Task | Command |
+|------|---------|
+| Install deps | `pip install -e ".[dev]"` |
+| Run tests | `pytest` |
+| Lint | `ruff check src/ tests/ scripts/` |
+| Auto-fix lint | `ruff check --fix src/ tests/ scripts/` |
+| Run experiment | `python3 scripts/run_experiment.py --config configs/<name>.yaml` |
 
-### Notes for Future Agents
+### Structure
 
-- If `requirements.txt` or `pyproject.toml` is added, run `pip install -r requirements.txt` or `pip install -e .` accordingly.
-- If a linter (e.g. `ruff`, `flake8`) or test runner (e.g. `pytest`) is added, document the commands here.
-- The repo name suggests this will be an ML/LLM project; common dependencies may include `torch`, `transformers`, `numpy`, etc.
+See `README.md` for full project structure. Core code lives under `src/`, configs in `configs/`, experiment runner in `scripts/`.
+
+### Notes
+
+- GSM8K is auto-downloaded on first run to `data/` (requires network). Subsequent runs use the HuggingFace cache.
+- The dummy model is controlled by `correct_prob` and `seed` in config; useful for deterministic pipeline testing.
+- `outputs/` and `data/` are gitignored.
