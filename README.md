@@ -154,6 +154,17 @@ python3 scripts/run_selective_escalation.py --config configs/selective_escalatio
 This writes summary JSON and per-query selective-escalation diagnostics under
 `outputs/selective_escalation/`.
 
+For a simple hybrid that first chooses direct vs reasoning mode and then
+allocates a small reasoning budget only to selected queries:
+
+```bash
+# compare direct, reasoning, and a conservative mode-then-budget hybrid
+python3 scripts/run_mode_then_budget.py --config configs/mode_then_budget_gsm8k.yaml
+```
+
+This writes summary JSON and per-query diagnostics under
+`outputs/mode_then_budget/`.
+
 For a tiny real-LLM sampling debug run to inspect sample diversity, parsing
 collapse, and selective-escalation gating signals:
 
