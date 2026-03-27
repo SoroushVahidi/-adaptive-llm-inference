@@ -176,6 +176,19 @@ python3 scripts/debug_real_llm_sampling.py
 This writes raw sample traces and a compact sampling debug summary under
 `outputs/debug_real_llm/`.
 
+For a small diagnostic that compares the current cheap OpenAI model against one
+stronger accessible OpenAI model, while also comparing naive best-of-3 against
+simple structured 3-attempt sampling on the same GSM8K subset:
+
+```bash
+# compare model tier and small-budget sampling strategy on <=30 GSM8K queries
+python3 scripts/run_model_sampling_diagnostic.py --config configs/model_sampling_diagnostic_gsm8k.yaml
+```
+
+This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
+`outputs/model_sampling_diagnostic/`, including stronger-model access failures
+when the configured stronger model is unavailable.
+
 ## Tests & Linting
 
 ```bash
