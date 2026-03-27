@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 class EqualAllocator:
     """Divide the global budget equally among all queries.
 
