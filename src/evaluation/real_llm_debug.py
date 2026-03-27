@@ -141,8 +141,12 @@ def _selective_debug(
                 "malformed_output": bool(signals["malformed_output"]),
                 "low_confidence_format": bool(signals["low_confidence_format"]),
                 "strict_escalation_score": strict_score,
-                "strict_threshold_would_escalate": strict_score >= strict_config.min_score_to_escalate,
-                "looser_threshold_would_escalate": strict_score >= loose_config.min_score_to_escalate,
+                "strict_threshold_would_escalate": (
+                    strict_score >= strict_config.min_score_to_escalate
+                ),
+                "looser_threshold_would_escalate": (
+                    strict_score >= loose_config.min_score_to_escalate
+                ),
             }
         )
     return rows

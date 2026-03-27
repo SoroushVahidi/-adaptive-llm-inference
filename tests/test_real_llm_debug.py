@@ -1,7 +1,4 @@
-from src.evaluation.real_llm_debug import (
-    _selective_debug,
-    run_real_llm_debug,
-)
+from src.evaluation.real_llm_debug import _selective_debug
 
 
 def test_run_real_llm_debug_summary_counts_diversity_and_parse_collapse() -> None:
