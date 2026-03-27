@@ -1,6 +1,7 @@
 from src.methods.selective_escalation import (
     SelectiveEscalationConfig,
     compute_escalation_signals,
+    parse_numeric_details,
     run_selective_escalation,
     score_escalation,
 )
@@ -35,6 +36,13 @@ def test_score_escalation_combines_signal_weights() -> None:
     score = score_escalation(signals, config)
 
     assert score == 3.75
+
+
+def test_parse_numeric_details_normalizes_decimal_strings() -> None:
+    parsed = parse_numeric_details("Answer: 26.00")
+
+    assert parsed["parsed_answer"] == "26"
+    assert parsed["parse_failure"] is False
 
 
 def test_run_selective_escalation_returns_expected_structure() -> None:
@@ -85,3 +93,5 @@ def test_run_selective_escalation_returns_expected_structure() -> None:
     assert len(result["diagnostics"]) == 2
     assert result["total_samples_used"] >= 2
     assert result["queries_escalated"] >= 0
+    assert result["queries_with_more_than_1_sample"] >= result["queries_escalated"]
+    assert result["queries_escalated_beyond_gating_stage"] >= 0

@@ -16,10 +16,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+import re
 from typing import Any
 
 from src.models.openai_llm import OpenAILLMModel
 from src.utils.answer_extraction import extract_numeric_answer
+
+NUMERIC_PATTERN = re.compile(r"-?[\d,]+\.?\d*")
+NUMERIC_ONLY_PATTERN = re.compile(r"^\s*-?[\d,]+(?:\.\d*)?\s*$")
 
 
 @dataclass
@@ -34,6 +38,8 @@ class SelectiveEscalationConfig:
     weight_malformed_output: float = 0.5
     weight_low_confidence_format: float = 0.5
     malformed_length_threshold: int = 2
+    min_score_to_escalate: float = 1.5
+    enable_post_ranking_escalation: bool = True
 
 
 def _normalize_numeric(value: str) -> str:
@@ -55,15 +61,24 @@ def parse_numeric_details(text: str, malformed_length_threshold: int = 2) -> dic
     extracted = extract_numeric_answer(text)
     normalized = _normalize_numeric(extracted)
     stripped = text.strip()
+    has_numeric_token = bool(NUMERIC_PATTERN.search(stripped))
+    numeric_only = bool(NUMERIC_ONLY_PATTERN.fullmatch(stripped))
 
-    parse_failure = normalized == ""
-    malformed_output = len(stripped) <= malformed_length_threshold
+    parse_failure = normalized == "" or not has_numeric_token
+    malformed_output = stripped == "" or (
+        len(stripped) <= malformed_length_threshold and parse_failure
+    )
     lowered = stripped.lower()
     has_final_answer_marker = "answer:" in lowered or "final answer" in lowered
-    low_confidence_format = (not parse_failure) and (not has_final_answer_marker)
+    low_confidence_format = (
+        (not parse_failure)
+        and (not has_final_answer_marker)
+        and (not numeric_only)
+    )
 
     return {
         "raw_text": text,
+        "raw_extracted_answer": extracted,
         "parsed_answer": normalized,
         "parse_failure": parse_failure,
         "malformed_output": malformed_output,
@@ -136,6 +151,13 @@ def run_selective_escalation(
 
     Returns per-query diagnostics but does not require labels; evaluation is
     handled separately so the method stays reusable.
+
+    Accounting semantics:
+    - ``used_second_sample_for_gating`` means the query consumed a second cheap
+      sample only for uncertainty checking / gate-only majority vote.
+    - ``escalated_beyond_gating_stage`` means the query received additional
+      post-ranking compute beyond the cheap gating stage.
+    - ``used_more_than_1_sample`` covers both of the above.
     """
     resolved = (
         config
@@ -152,6 +174,8 @@ def run_selective_escalation(
             weight_malformed_output=resolved.weight_malformed_output,
             weight_low_confidence_format=resolved.weight_low_confidence_format,
             malformed_length_threshold=resolved.malformed_length_threshold,
+            min_score_to_escalate=resolved.min_score_to_escalate,
+            enable_post_ranking_escalation=resolved.enable_post_ranking_escalation,
         )
 
     n_queries = len(questions)
@@ -175,23 +199,36 @@ def run_selective_escalation(
 
         second_output = None
         second_parsed = None
+        first_details = parse_numeric_details(
+            first_output,
+            malformed_length_threshold=resolved.malformed_length_threshold,
+        )
+        initial_uncertainty_signals = (
+            bool(first_details["parse_failure"])
+            or bool(first_details["malformed_output"])
+            or bool(first_details["low_confidence_format"])
+        )
+        used_second_sample_for_gating = False
         if (
             resolved.use_second_sample_for_disagreement
+            and initial_uncertainty_signals
             and total_samples_used < resolved.total_budget
         ):
             second_output = model.generate(question)
             total_samples_used += 1
-            second_parsed = parse_numeric_details(
+            used_second_sample_for_gating = True
+            second_details = parse_numeric_details(
                 second_output,
                 malformed_length_threshold=resolved.malformed_length_threshold,
-            )["parsed_answer"]
+            )
+            second_parsed = second_details["parsed_answer"]
 
         signals = compute_escalation_signals(
             first_output=first_output,
             second_output=second_output,
             malformed_length_threshold=resolved.malformed_length_threshold,
         )
-        first_parsed = signals["first_output"]["parsed_answer"]
+        first_parsed = first_details["parsed_answer"]
         score = score_escalation(signals, resolved)
 
         candidate_answers = [first_parsed]
@@ -202,7 +239,14 @@ def run_selective_escalation(
             {
                 "question": question,
                 "first_pass_answer": first_parsed,
+                "first_pass_raw_extracted_answer": first_details["raw_extracted_answer"],
                 "first_pass_raw_output": first_output,
+                "normalization_changed_first_pass_answer": (
+                    first_details["raw_extracted_answer"] != first_parsed
+                ),
+                "used_second_sample_for_gating": used_second_sample_for_gating,
+                "second_sample_answer": second_parsed,
+                "second_sample_raw_output": second_output,
                 "escalation_score": score,
                 "signals": {
                     key: bool(signals[key])
@@ -213,9 +257,11 @@ def run_selective_escalation(
                         "low_confidence_format",
                     )
                 },
+                "gating_stage_answers": list(candidate_answers),
                 "candidate_answers": candidate_answers,
                 "samples_used": len(candidate_answers),
-                "escalated": False,
+                "used_more_than_1_sample": len(candidate_answers) > 1,
+                "escalated_beyond_gating_stage": False,
             }
         )
 
@@ -230,9 +276,11 @@ def run_selective_escalation(
     )
 
     for idx in ranked_indices:
+        if not resolved.enable_post_ranking_escalation:
+            break
         if remaining_budget <= 0:
             break
-        if diagnostics[idx]["escalation_score"] <= 0.0:
+        if diagnostics[idx]["escalation_score"] < resolved.min_score_to_escalate:
             break
 
         already_have = len(diagnostics[idx]["candidate_answers"])
@@ -251,14 +299,25 @@ def run_selective_escalation(
         ]
         diagnostics[idx]["candidate_answers"].extend(extra_answers)
         diagnostics[idx]["samples_used"] += needed
-        diagnostics[idx]["escalated"] = True
+        diagnostics[idx]["used_more_than_1_sample"] = (
+            diagnostics[idx]["samples_used"] > 1
+        )
+        diagnostics[idx]["escalated_beyond_gating_stage"] = True
         remaining_budget -= needed
 
     for item in diagnostics:
         item["final_answer"] = _majority_vote(item["candidate_answers"])
+        item["signals_fired"] = [
+            key for key, fired in item["signals"].items() if bool(fired)
+        ]
 
     return {
         "diagnostics": diagnostics,
         "total_samples_used": sum(int(item["samples_used"]) for item in diagnostics),
-        "queries_escalated": sum(int(bool(item["escalated"])) for item in diagnostics),
+        "queries_with_more_than_1_sample": sum(
+            int(bool(item["used_more_than_1_sample"])) for item in diagnostics
+        ),
+        "queries_escalated_beyond_gating_stage": sum(
+            int(bool(item["escalated_beyond_gating_stage"])) for item in diagnostics
+        ),
     }
