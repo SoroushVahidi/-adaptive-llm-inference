@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from src.allocators.base import Allocator
 
-
-class EqualAllocator(Allocator):
+class EqualAllocator:
     """Divide the global budget equally among all queries.
 
     Any remainder samples are distributed round-robin to the first queries.

@@ -1,37 +1,30 @@
-"""Allocator base interfaces for adaptive test-time compute allocation."""
-
 from abc import ABC, abstractmethod
-
-
-class Allocator(ABC):
-    """Decides how many samples to allocate per query given a global budget."""
-
-    @abstractmethod
-    def allocate(self, n_queries: int, budget: int) -> list[int]:
-        """Return per-query sample counts summing to at most *budget*."""
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Human-readable name of the allocator."""
+from typing import List, Tuple
 
 
 class BaseAllocator(ABC):
-    """Base interface for compute allocation algorithms.
+    """
+    Base interface for compute allocation algorithms.
 
-    Subclasses must implement ``allocate``, which assigns one compute level
-    per query while respecting a global integer budget.
+    An allocator assigns a compute level to each query under a total budget.
     """
 
     @abstractmethod
-    def allocate(self, profits, costs, budget: int) -> dict:
-        """Allocate compute levels to queries under a total budget.
-
+    def allocate(
+        self,
+        profits: List[List[float]],
+        costs: List[int],
+        budget: int,
+    ) -> Tuple[List[int], float, int]:
+        """
         Args:
-            profits: 2-D array-like ``[n_queries, n_levels]`` of utilities.
-            costs: 1-D array-like ``[n_levels]`` of integer compute costs.
-            budget: Total integer compute budget.
+            profits: 2D list [n_queries][n_levels]
+            costs: list of length n_levels
+            budget: total budget
 
         Returns:
-            Dict with ``selected_levels``, ``total_profit``, ``total_cost``.
+            selected_levels: list[int]
+            total_profit: float
+            total_cost: int
         """
+        pass
