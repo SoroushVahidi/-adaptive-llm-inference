@@ -256,9 +256,41 @@ def build_overlap_summary(per_query_rows: list[dict[str, Any]]) -> dict[str, Any
 
 
 def summarize_method_results(
-    method_summaries: list[dict[str, Any]],
+    method_summaries_or_results: list[dict[str, Any]] | dict[str, list[Any]],
+    method_specs: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Return method summaries in a stable display order."""
+    """Return method summaries in a stable display order.
+
+    Supports either:
+    - a precomputed list of method summary dicts, or
+    - a test-friendly dict mapping method name -> result objects.
+    """
+    if isinstance(method_summaries_or_results, dict):
+        if method_specs is None:
+            raise ValueError("method_specs is required when summarizing raw method results")
+        summaries: list[dict[str, Any]] = []
+        for spec in method_specs:
+            method_name = str(spec["name"])
+            results = method_summaries_or_results[method_name]
+            total_queries = len(results)
+            total_samples = sum(int(result.samples_used) for result in results)
+            correct = sum(1 for result in results if bool(result.correct))
+            summaries.append(
+                {
+                    "method": method_name,
+                    "prompt_style": spec["prompt_style"],
+                    "n_samples": int(spec["n_samples"]),
+                    "accuracy": 0.0 if total_queries == 0 else correct / total_queries,
+                    "total_samples_used": total_samples,
+                    "avg_samples_per_query": (
+                        0.0 if total_queries == 0 else total_samples / total_queries
+                    ),
+                }
+            )
+        method_summaries = summaries
+    else:
+        method_summaries = method_summaries_or_results
+
     order = {
         "greedy_direct": 0,
         "greedy_reasoning": 1,
@@ -329,7 +361,10 @@ def write_diagnostic_outputs(
     return paths
 
 
-def format_diagnostic_summary(result: dict[str, Any]) -> str:
+def format_diagnostic_summary(
+    result: dict[str, Any],
+    paths: dict[str, str] | None = None,
+) -> str:
     """Render a concise terminal summary for the diagnostic run."""
     lines = [
         "--- Real LLM Diagnostic Summary ---",
@@ -359,4 +394,12 @@ def format_diagnostic_summary(result: dict[str, Any]) -> str:
             f"{overlap['queries_worsened_self_consistency_vs_greedy_reasoning']}",
         ]
     )
+    if paths is not None:
+        lines.extend(
+            [
+                "",
+                f"summary_json:              {paths['summary_json']}",
+                f"per_query_csv:             {paths['per_query_csv']}",
+            ]
+        )
     return "\n".join(lines)
