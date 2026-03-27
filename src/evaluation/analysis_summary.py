@@ -343,8 +343,10 @@ def format_terminal_summary(summary: dict[str, Any]) -> str:
         f"noise_summary_table:        {summary['noise_summary_table_path']}",
         "",
         "Budget sweep:",
-        f"  max improvement over equal: {_format_float(budget_metrics['max_improvement_over_equal'])}",
-        f"  average improvement:       {_format_float(budget_metrics['average_improvement_over_equal'])}",
+        "  max improvement over equal: "
+        f"{_format_float(budget_metrics['max_improvement_over_equal'])}",
+        "  average improvement:       "
+        f"{_format_float(budget_metrics['average_improvement_over_equal'])}",
         f"  budget where improvement peaks: {budget_metrics['budget_where_improvement_peaks']}",
         "  budget where gap becomes small: "
         f"{budget_metrics['budget_where_gap_becomes_small']}",
