@@ -16,7 +16,7 @@ from src.baselines.best_of_n import BestOfNBaseline
 from src.baselines.greedy import GreedyBaseline
 from src.datasets.gsm8k import load_gsm8k
 from src.evaluation.logger import ExperimentLogger
-from src.models.llm_model import OpenAICompatibleLLMModel
+from src.models.openai_llm import OpenAILLMModel
 from src.utils.config import load_config
 
 BASELINES = {
@@ -48,10 +48,15 @@ def run(config: dict[str, Any]) -> dict[str, Any]:
             "This validation script currently supports only an OpenAI-style API."
         )
 
-    model = OpenAICompatibleLLMModel(
-        model_name=str(model_cfg["name"]),
+    model = OpenAILLMModel(
+        model_name=str(model_cfg["model"]),
         base_url=model_cfg.get("base_url"),
-        system_prompt=model_cfg.get("system_prompt"),
+        prompt_prefix=str(
+            model_cfg.get(
+                "prompt_prefix",
+                "Answer the following question. Give only the final numeric answer.",
+            )
+        ),
         greedy_temperature=float(model_cfg.get("greedy_temperature", 0.0)),
         sample_temperature=float(model_cfg.get("sample_temperature", 0.7)),
         max_tokens=int(model_cfg.get("max_tokens", 256)),
