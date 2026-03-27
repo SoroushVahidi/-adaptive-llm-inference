@@ -1,26 +1,30 @@
-"""Abstract allocator interface."""
-
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
+from typing import List, Tuple
 
 
-class Allocator(ABC):
-    """Decides how many samples to allocate per query given a global budget."""
+class BaseAllocator(ABC):
+    """
+    Base interface for compute allocation algorithms.
+
+    An allocator assigns a compute level to each query under a total budget.
+    """
 
     @abstractmethod
-    def allocate(self, n_queries: int, budget: int) -> list[int]:
-        """Return a list of per-query sample counts summing to at most *budget*.
-
+    def allocate(
+        self,
+        profits: List[List[float]],
+        costs: List[int],
+        budget: int,
+    ) -> Tuple[List[int], float, int]:
+        """
         Args:
-            n_queries: Total number of queries.
-            budget: Total number of samples allowed.
+            profits: 2D list [n_queries][n_levels]
+            costs: list of length n_levels
+            budget: total budget
 
         Returns:
-            List of length *n_queries* with per-query sample counts.
+            selected_levels: list[int]
+            total_profit: float
+            total_cost: int
         """
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Human-readable name of the allocator."""
+        pass

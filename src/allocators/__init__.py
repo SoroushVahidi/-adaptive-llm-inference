@@ -1,3 +1,6 @@
-from src.allocators.equal import EqualAllocator
+"""Allocator modules for adaptive test-time compute allocation."""
 
-__all__ = ["EqualAllocator"]
+from .equal import EqualAllocator
+from .mckp_allocator import MCKPAllocator
+
+__all__ = ["EqualAllocator", "MCKPAllocator"]
