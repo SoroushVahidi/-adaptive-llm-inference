@@ -1,0 +1,27 @@
+dataset:
+  name: gsm8k
+  split: test
+  max_samples: 30
+
+model:
+  name: gpt-4o-mini
+  greedy_temperature: 0.0
+  sample_temperature: 0.7
+  max_tokens: 128
+  timeout_seconds: 60
+
+prompt_style: direct
+
+selective_method:
+  total_budget: 50
+  extra_samples_per_escalated_query: 2
+  use_second_sample_for_disagreement: true
+  parse_failure_weight: 2.0
+  disagreement_weight: 1.5
+  malformed_output_weight: 1.0
+  missing_numeric_weight: 1.0
+  min_score_to_escalate: 1.5
+
+include_self_consistency: true
+
+output_dir: outputs/selective_escalation

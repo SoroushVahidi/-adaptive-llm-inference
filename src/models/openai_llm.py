@@ -120,6 +120,16 @@ class OpenAILLMModel(Model):
             temperature=self.sample_temperature,
         )
 
+    def generate_with_temperature(self, prompt: str, n: int, temperature: float) -> list[str]:
+        """Expose a small override hook for experiments with mixed sampling stages."""
+        if n <= 0:
+            raise ValueError("n must be positive")
+        return self._request_completions(
+            prompt=prompt,
+            n=n,
+            temperature=temperature,
+        )
+
     def with_prompt_prefix(self, prompt_prefix: str) -> "OpenAILLMModel":
         """Create a shallow copy that changes only the prompt prefix."""
         cloned = OpenAILLMModel(

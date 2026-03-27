@@ -144,6 +144,16 @@ python3 scripts/run_real_gain_table.py --config configs/real_gain_table_gsm8k.ya
 This writes per-query gain tables and budget-comparison summaries under
 `outputs/real_gain_table/`.
 
+For a first selective-compute prototype on real GSM8K with a real OpenAI model:
+
+```bash
+# compare greedy, always-best-of-3, and selective escalation under one sample budget
+python3 scripts/run_selective_escalation.py --config configs/selective_escalation_gsm8k.yaml
+```
+
+This writes summary JSON and per-query selective-escalation diagnostics under
+`outputs/selective_escalation/`.
+
 ## Tests & Linting
 
 ```bash
