@@ -82,7 +82,10 @@ def _sample_levels(config: dict[str, Any]) -> list[int]:
     if not levels:
         raise ValueError("sample_levels must be non-empty")
     if levels != [1, 2, 3]:
-        raise ValueError("This lightweight experiment currently supports sample_levels [1, 2, 3] only.")
+        raise ValueError(
+            "This lightweight experiment currently supports "
+            "sample_levels [1, 2, 3] only."
+        )
     return levels
 
 
@@ -186,7 +189,8 @@ def build_budget_comparison(
     max_budget = 3 * n_queries
     if any(budget < min_budget or budget > max_budget for budget in budgets):
         raise ValueError(
-            f"budgets must lie in [{min_budget}, {max_budget}] for {n_queries} queries and k in [1, 3]"
+            f"budgets must lie in [{min_budget}, {max_budget}] "
+            f"for {n_queries} queries and k in [1, 3]"
         )
 
     utility_table = [
@@ -242,9 +246,41 @@ def summarize_gain_table(
         raise ValueError("budget_comparison must be non-empty")
 
     n_queries = len(gain_rows)
-    positive_gain_count = sum(int(row["positive_gain"]) for row in gain_rows)
-    diminishing_returns_count = sum(int(row["diminishing_returns"]) for row in gain_rows)
-    no_gain_count = sum(int(row["no_gain"]) for row in gain_rows)
+    positive_gain_count = sum(
+        int(
+            bool(
+                row.get(
+                    "positive_gain",
+                    row["empirical_success_k3"] > row["empirical_success_k1"],
+                )
+            )
+        )
+        for row in gain_rows
+    )
+    diminishing_returns_count = sum(
+        int(
+            bool(
+                row.get(
+                    "diminishing_returns",
+                    row["marginal_gain_1_to_2"] >= row["marginal_gain_2_to_3"],
+                )
+            )
+        )
+        for row in gain_rows
+    )
+    no_gain_count = sum(
+        int(
+            bool(
+                row.get(
+                    "no_gain",
+                    row["empirical_success_k1"]
+                    == row["empirical_success_k2"]
+                    == row["empirical_success_k3"],
+                )
+            )
+        )
+        for row in gain_rows
+    )
     strongest_budget = max(
         budget_comparison,
         key=lambda row: float(row["absolute_gap_oracle_minus_uniform"]),
