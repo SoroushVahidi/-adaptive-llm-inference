@@ -1,7 +1,7 @@
 dataset:
   name: gsm8k
   split: test
-  max_samples: 20
+  max_samples: 8
 
 models:
   current: gpt-4o-mini
