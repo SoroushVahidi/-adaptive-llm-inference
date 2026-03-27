@@ -70,6 +70,25 @@ python3 scripts/run_experiment.py --config configs/equal_allocator.yaml
 
 Results are saved as JSON in `outputs/`.
 
+## Simulated Sweep Diagnostics
+
+The repository also includes a lightweight synthetic analysis flow for studying
+when classical allocation optimization helps over equal allocation and how that
+advantage changes with noisy utility estimates.
+
+```bash
+# run the synthetic budget/noise sweep
+python3 scripts/run_simulated_sweep.py --config configs/simulated_sweep.yaml
+
+# summarize sweep CSV outputs into a compact table and optional plots
+python3 scripts/summarize_simulated_results.py
+```
+
+The summary script reads the CSV outputs under `outputs/simulated_sweep/`,
+writes `outputs/simulated_sweep/summary_table.csv`, prints key budget/noise
+metrics to the terminal, and saves simple plots under
+`outputs/simulated_sweep/plots/` when `matplotlib` is available.
+
 ## Tests & Linting
 
 ```bash
