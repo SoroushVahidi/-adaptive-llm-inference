@@ -89,6 +89,18 @@ writes `outputs/simulated_sweep/summary_table.csv`, prints key budget/noise
 metrics to the terminal, and saves simple plots under
 `outputs/simulated_sweep/plots/` when `matplotlib` is available.
 
+For robustness checks across synthetic instance draws, you can also run a
+multi-seed version of the sweep:
+
+```bash
+# run the sweep across multiple synthetic seeds and aggregate the results
+python3 scripts/run_simulated_multi_seed.py --config configs/simulated_multi_seed.yaml
+```
+
+This writes per-seed outputs plus aggregated budget/noise summaries under
+`outputs/simulated_multi_seed/`, including mean/std utility, mean/std utility
+gap, and the fraction of seeds where MCKP beats equal.
+
 ## Tests & Linting
 
 ```bash
