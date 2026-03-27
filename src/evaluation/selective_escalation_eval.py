@@ -24,7 +24,6 @@ from src.methods.selective_escalation import (
     run_selective_escalation,
 )
 from src.models.openai_llm import OpenAILLMModel
-from src.utils.answer_extraction import extract_numeric_answer
 
 DIRECT_PROMPT = "Answer the following question. Give only the final numeric answer."
 

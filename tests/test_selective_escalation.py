@@ -8,13 +8,13 @@ from src.methods.selective_escalation import (
 
 def test_compute_escalation_signals_detects_basic_indicators() -> None:
     signals = compute_escalation_signals(
-        first_output="I am not sure.",
+        first_output="",
         second_output="Answer: 12",
     )
 
     assert signals["parse_failure"] is True
     assert signals["disagreement_2sample"] is True
-    assert signals["malformed_output"] is False
+    assert signals["malformed_output"] is True
     assert signals["low_confidence_format"] is False
 
 

@@ -220,7 +220,6 @@ def run_selective_escalation(
         )
 
     # Stage 3: spend remaining budget only on the strongest flagged queries.
-    extras_per_query = max(0, resolved.escalation_target_k - 1)
     remaining_budget = resolved.total_budget - total_samples_used
     ranked_indices = sorted(
         range(n_queries),
