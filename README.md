@@ -2,34 +2,48 @@
 
 Adaptive test-time compute allocation for LLM reasoning under budget constraints.
 
+> **New here?** Read [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) for the
+> full research goal, paper positioning, baseline families, and implementation plan.
+> See [`docs/BASELINE_TRACKER.md`](docs/BASELINE_TRACKER.md) for the status of
+> every baseline we plan to compare against.
+
 ## Overview
 
-Given a batch of reasoning queries and a fixed compute budget (total number of LLM samples), how should we allocate samples across queries to maximize accuracy?
+Given a batch of reasoning queries and a fixed compute budget, how should we
+allocate test-time compute across queries to maximize accuracy?
 
-This project provides:
+This repository provides:
 
-- **Baselines** — greedy (1 sample), best-of-N, self-consistency (majority vote)
-- **Allocators** — strategies that distribute a global sample budget across queries
+- **Baselines** — greedy, best-of-N, self-consistency (native); TALE, BEST-Route (external wrappers)
+- **Allocators** — budget allocation strategies (currently: equal allocation)
 - **Evaluation** — exact-match accuracy, per-query logging, compute tracking
-- **Experiment runner** — config-driven script that ties everything together
+- **Experiment runner** — config-driven script tying everything together
 
-Currently uses a dummy model for pipeline validation. The model interface is designed for drop-in replacement with API-based LLMs.
+Currently uses a dummy model for pipeline validation.  The model interface
+supports drop-in replacement with API-based LLMs.
 
 ## Project Structure
 
 ```
 ├── src/
-│   ├── datasets/       # Dataset loaders (GSM8K)
-│   ├── models/         # Model interface + dummy implementation
-│   ├── baselines/      # Greedy, best-of-N, self-consistency
-│   ├── allocators/     # Budget allocation strategies
-│   ├── evaluation/     # Metrics and experiment logging
-│   └── utils/          # Config loading, answer extraction
-├── configs/            # YAML experiment configs
-├── scripts/            # Experiment runner
-├── tests/              # Unit tests
-├── data/               # Downloaded datasets (gitignored)
-└── outputs/            # Experiment results (gitignored)
+│   ├── datasets/          # Dataset loaders (GSM8K)
+│   ├── models/            # Model interface + dummy implementation
+│   ├── baselines/         # Native baselines
+│   │   └── external/      # Wrappers for official-code baselines
+│   ├── allocators/        # Budget allocation strategies
+│   ├── evaluation/        # Metrics and experiment logging
+│   └── utils/             # Config loading, answer extraction
+├── configs/               # YAML experiment configs
+├── scripts/               # Experiment runner
+├── tests/                 # Unit tests
+├── docs/                  # Research documentation
+│   ├── PROJECT_CONTEXT.md # ← read this first
+│   └── BASELINE_TRACKER.md
+├── external/              # Official code from baseline papers
+│   ├── tale/
+│   └── best_route/
+├── data/                  # Downloaded datasets (gitignored)
+└── outputs/               # Experiment results (gitignored)
 ```
 
 ## Setup
@@ -38,54 +52,47 @@ Currently uses a dummy model for pipeline validation. The model interface is des
 pip install -e ".[dev]"
 ```
 
-## Running an Experiment
+## Quick Start
 
 ```bash
-# Greedy baseline (1 sample per query)
-python scripts/run_experiment.py --config configs/greedy.yaml
+# greedy baseline (1 sample per query, 50 GSM8K test queries)
+python3 scripts/run_experiment.py --config configs/greedy.yaml
 
-# Best-of-N (5 samples per query, majority vote)
-python scripts/run_experiment.py --config configs/best_of_n.yaml
+# best-of-N (5 samples per query)
+python3 scripts/run_experiment.py --config configs/best_of_n.yaml
 
-# Self-consistency
-python scripts/run_experiment.py --config configs/self_consistency.yaml
+# self-consistency (majority vote, 5 samples)
+python3 scripts/run_experiment.py --config configs/self_consistency.yaml
 
-# Equal allocation with budget constraint
-python scripts/run_experiment.py --config configs/equal_allocator.yaml
+# equal allocation under budget constraint
+python3 scripts/run_experiment.py --config configs/equal_allocator.yaml
 ```
 
 Results are saved as JSON in `outputs/`.
 
-## Running Tests
+## Tests & Linting
 
 ```bash
 pytest
-```
-
-## Linting
-
-```bash
 ruff check src/ tests/ scripts/
 ```
 
 ## Config Format
 
-Configs are YAML files with these fields:
-
 ```yaml
 dataset:
   name: gsm8k
   split: test
-  max_samples: 50        # limit queries for fast iteration
+  max_samples: 50
 
 model:
   type: dummy
-  correct_prob: 0.3      # probability the dummy model returns the correct answer
+  correct_prob: 0.3
   seed: 42
 
-baseline: greedy         # greedy | best_of_n | self_consistency
-n_samples: 1             # samples per query (for non-greedy baselines)
-budget: 50               # total sample budget
+baseline: greedy          # greedy | best_of_n | self_consistency
+n_samples: 1
+budget: 50
 
 output: outputs/results.json
 ```
