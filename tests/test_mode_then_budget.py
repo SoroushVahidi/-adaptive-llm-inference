@@ -25,8 +25,8 @@ def test_score_mode_switch_combines_weights() -> None:
         weight_parse_failure=2.0,
         weight_malformed_output=1.0,
         weight_low_confidence_format=0.5,
-        weight_mode_disagreement=1.5,
-        route_score_threshold=2.0,
+        weight_direct_reasoning_disagreement=1.5,
+        min_switch_score=2.0,
     )
     score = score_mode_switch(
         {
@@ -72,7 +72,7 @@ def test_run_mode_then_budget_returns_expected_structure() -> None:
             self.calls += n
             return values[:n]
 
-    config = ModeThenBudgetConfig(total_budget=6, route_score_threshold=1.0)
+    config = ModeThenBudgetConfig(total_budget=6, min_switch_score=1.0)
     result = run_mode_then_budget(
         direct_model=_FakeDirectModel(),
         reasoning_model=_FakeReasoningModel(),

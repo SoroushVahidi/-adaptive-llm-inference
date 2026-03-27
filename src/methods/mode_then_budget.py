@@ -293,6 +293,11 @@ def run_mode_then_budget(
         rows[idx]["samples_used"] = 1 + len(rows[idx]["reasoning_answers"])
         remaining_budget -= needed
 
+    for row in rows:
+        row["signals_fired"] = [
+            key for key, fired in row["switch_signals"].items() if bool(fired)
+        ]
+
     return {
         "rows": rows,
         "diagnostics": rows,

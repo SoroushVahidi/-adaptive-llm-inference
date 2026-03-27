@@ -22,7 +22,6 @@ from src.datasets.gsm8k import Query, load_gsm8k
 from src.evaluation.metrics import compute_accuracy
 from src.methods.mode_then_budget import ModeThenBudgetConfig, run_mode_then_budget
 from src.models.openai_llm import OpenAILLMModel
-from src.utils.answer_extraction import extract_numeric_answer
 
 DIRECT_PROMPT = "Answer the following question. Give only the final numeric answer."
 REASONING_PROMPT = (
@@ -135,11 +134,33 @@ def _run_selective_v1_if_enabled(
 
     from src.evaluation.selective_escalation_eval import run_selective_escalation_eval
 
+    selective_method_cfg = config.get("selective_method")
+    if selective_method_cfg is None:
+        mode_cfg = config.get("mode_then_budget", {})
+        selective_method_cfg = {
+            "total_budget": int(mode_cfg["total_budget"]),
+            "extra_samples_per_escalated_query": int(
+                mode_cfg.get("extra_reasoning_samples", 2)
+            ),
+            "use_second_sample_for_disagreement": bool(
+                mode_cfg.get("use_reasoning_probe", True)
+            ),
+            "parse_failure_weight": float(mode_cfg.get("parse_failure_weight", 2.0)),
+            "disagreement_weight": float(
+                mode_cfg.get("weight_direct_reasoning_disagreement", 1.5)
+            ),
+            "malformed_output_weight": float(mode_cfg.get("malformed_output_weight", 1.0)),
+            "missing_numeric_weight": float(
+                mode_cfg.get("weight_low_confidence_format", 1.0)
+            ),
+            "min_score_to_escalate": float(mode_cfg.get("min_switch_score", 1.5)),
+        }
+
     selective_result = run_selective_escalation_eval(
         {
             "dataset": config["dataset"],
             "model": config["model"],
-            "selective_method": config.get("selective_method", {}),
+            "selective_method": selective_method_cfg,
         }
     )
     summary = next(
@@ -172,13 +193,14 @@ def run_mode_then_budget_eval(config: dict[str, Any]) -> dict[str, Any]:
         config=ModeThenBudgetConfig(
             total_budget=int(method_cfg["total_budget"]),
             reasoning_target_k=1 + int(method_cfg.get("extra_reasoning_samples", 2)),
-            route_score_threshold=float(method_cfg.get("route_score_threshold", 1.5)),
+            min_switch_score=float(method_cfg.get("min_switch_score", 1.5)),
             use_reasoning_probe=bool(method_cfg.get("use_reasoning_probe", True)),
-            use_second_direct_sample=bool(method_cfg.get("use_second_direct_sample", False)),
             weight_parse_failure=float(method_cfg.get("parse_failure_weight", 2.0)),
             weight_malformed_output=float(method_cfg.get("malformed_output_weight", 1.0)),
             weight_low_confidence_format=float(method_cfg.get("low_confidence_weight", 1.0)),
-            weight_mode_disagreement=float(method_cfg.get("mode_disagreement_weight", 1.5)),
+            weight_direct_reasoning_disagreement=float(
+                method_cfg.get("mode_disagreement_weight", 1.5)
+            ),
             malformed_length_threshold=int(method_cfg.get("malformed_length_threshold", 2)),
         ),
     )
@@ -240,7 +262,9 @@ def run_mode_then_budget_eval(config: dict[str, Any]) -> dict[str, Any]:
 
     n_queries = len(queries)
     switched = int(mode_then_budget["queries_switched_to_reasoning"])
-    switched_rows = [row for row in mode_then_budget["diagnostics"] if bool(row["switched_to_reasoning"])]
+    switched_rows = [
+        row for row in mode_then_budget["diagnostics"] if bool(row["switched_to_reasoning"])
+    ]
     avg_reasoning_samples = (
         0.0
         if not switched_rows
@@ -248,7 +272,11 @@ def run_mode_then_budget_eval(config: dict[str, Any]) -> dict[str, Any]:
     )
     hybrid_summary = {
         "method": "mode_then_budget_v2",
-        "accuracy": 0.0 if n_queries == 0 else sum(int(row["final_correct"]) for row in per_query_rows) / n_queries,
+        "accuracy": (
+            0.0
+            if n_queries == 0
+            else sum(int(row["final_correct"]) for row in per_query_rows) / n_queries
+        ),
         "total_samples_used": int(mode_then_budget["total_samples_used"]),
         "average_samples_per_query": (
             0.0 if n_queries == 0 else mode_then_budget["total_samples_used"] / n_queries
