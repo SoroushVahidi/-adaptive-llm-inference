@@ -462,7 +462,10 @@ def run_noise_sensitivity_experiments(
     }
 
 
-def resolve_budget_list(configured_budgets: Sequence[int] | None, budget_range: dict[str, int] | None) -> list[int]:
+def resolve_budget_list(
+    configured_budgets: Sequence[int] | None,
+    budget_range: dict[str, int] | None,
+) -> list[int]:
     """Resolve either an explicit budget list or an inclusive integer range."""
     if configured_budgets:
         return [int(budget) for budget in configured_budgets]
