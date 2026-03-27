@@ -108,6 +108,7 @@ def generate_synthetic_ttc_instance(
             - query_ids
             - utility_table
             - costs
+            - difficulty_labels
             - metadata
     """
     if n_queries <= 0:
@@ -154,6 +155,7 @@ def generate_synthetic_ttc_instance(
         "query_ids": query_ids,
         "utility_table": utility_table,
         "costs": resolved_costs,
+        "difficulty_labels": difficulties,
         "metadata": metadata,
     }
 
