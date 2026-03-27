@@ -134,6 +134,16 @@ python3 scripts/run_real_llm_diagnostic.py --config configs/real_llm_gsm8k_diagn
 This writes summary JSON plus per-query diagnostic CSV/JSON under
 `outputs/real_llm_diagnostic/`.
 
+For a small real-data gain-table / allocation-headroom estimate on GSM8K:
+
+```bash
+# estimate empirical per-query success at k=1/2/3 and compare uniform vs oracle
+python3 scripts/run_real_gain_table.py --config configs/real_gain_table_gsm8k.yaml
+```
+
+This writes per-query gain tables and budget-comparison summaries under
+`outputs/real_gain_table/`.
+
 ## Tests & Linting
 
 ```bash
