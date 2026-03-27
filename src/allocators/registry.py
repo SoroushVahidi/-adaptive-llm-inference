@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from src.allocators.equal import EqualAllocator
 from src.allocators.mckp_allocator import MCKPAllocator
+from src.allocators.robust_equalized import RobustEqualizedAllocator
 
 
 def get_allocator(name: str):
@@ -12,11 +13,17 @@ def get_allocator(name: str):
     Supported names:
       - "equal"
       - "mckp"
+      - "robust_equalized"
     """
     normalized = name.strip().lower()
     if normalized == "equal":
         return EqualAllocator()
     if normalized == "mckp":
         return MCKPAllocator()
-    raise ValueError(f"Unknown allocator '{name}'. Supported: ['equal', 'mckp']")
+    if normalized == "robust_equalized":
+        return RobustEqualizedAllocator()
+    raise ValueError(
+        "Unknown allocator "
+        f"'{name}'. Supported: ['equal', 'mckp', 'robust_equalized']"
+    )
 

@@ -101,6 +101,19 @@ This writes per-seed outputs plus aggregated budget/noise summaries under
 `outputs/simulated_multi_seed/`, including mean/std utility, mean/std utility
 gap, and the fraction of seeds where MCKP beats equal.
 
+## Real-Data Budget Sweeps
+
+For lightweight GSM8K budget sweeps with currently runnable native baselines:
+
+```bash
+# run a multi-budget GSM8K sweep with the current local/dummy model path
+python3 scripts/run_real_budget_sweep.py --config configs/real_budget_sweep_gsm8k.yaml
+```
+
+This writes JSON/CSV summaries under `outputs/real_budget_sweep/`. The current
+path uses the existing dummy/local model stack, so the results are useful for
+pipeline validation and budget accounting rather than final real-model claims.
+
 ## Tests & Linting
 
 ```bash
