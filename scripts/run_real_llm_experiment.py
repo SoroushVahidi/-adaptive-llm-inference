@@ -49,7 +49,7 @@ def run(config: dict[str, Any]) -> dict[str, Any]:
         )
 
     model = OpenAILLMModel(
-        model_name=str(model_cfg["model"]),
+        model_name=str(model_cfg["name"]),
         base_url=model_cfg.get("base_url"),
         prompt_prefix=str(
             model_cfg.get(
