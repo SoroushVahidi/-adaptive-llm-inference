@@ -154,6 +154,17 @@ python3 scripts/run_selective_escalation.py --config configs/selective_escalatio
 This writes summary JSON and per-query selective-escalation diagnostics under
 `outputs/selective_escalation/`.
 
+For a tiny real-LLM sampling debug run to inspect sample diversity, parsing
+collapse, and selective-escalation gating signals:
+
+```bash
+# record repeated raw samples and parsed answers on a 5-query GSM8K subset
+python3 scripts/debug_real_llm_sampling.py
+```
+
+This writes raw sample traces and a compact sampling debug summary under
+`outputs/debug_real_llm/`.
+
 ## Tests & Linting
 
 ```bash
