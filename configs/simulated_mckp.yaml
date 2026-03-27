@@ -1,0 +1,12 @@
+synthetic:
+  n_queries: 120
+  n_levels: 6
+  curve_family: mixed_difficulty
+  costs: [0, 1, 2, 4, 7, 11]
+  seed: 7
+
+allocator:
+  name: mckp
+
+budget: 300
+output: outputs/simulated_mckp_results.json

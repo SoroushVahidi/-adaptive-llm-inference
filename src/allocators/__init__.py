@@ -2,5 +2,6 @@
 
 from .equal import EqualAllocator
 from .mckp_allocator import MCKPAllocator
+from .registry import get_allocator
 
-__all__ = ["EqualAllocator", "MCKPAllocator"]
+__all__ = ["EqualAllocator", "MCKPAllocator", "get_allocator"]

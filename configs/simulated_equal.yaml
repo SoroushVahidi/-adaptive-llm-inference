@@ -1,0 +1,13 @@
+synthetic:
+  n_queries: 80
+  n_levels: 5
+  curve_family: mixed_difficulty
+  costs: [0, 1, 2, 4, 7]
+  seed: 123
+
+allocator:
+  name: equal
+
+budget: 180
+
+output: outputs/simulated_equal_results.json
