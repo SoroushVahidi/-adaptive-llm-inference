@@ -1,9 +1,6 @@
 """Allocator base interfaces for adaptive test-time compute allocation."""
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import Any
 
 
 class Allocator(ABC):
@@ -11,15 +8,7 @@ class Allocator(ABC):
 
     @abstractmethod
     def allocate(self, n_queries: int, budget: int) -> list[int]:
-        """Return a list of per-query sample counts summing to at most *budget*.
-
-        Args:
-            n_queries: Total number of queries.
-            budget: Total number of samples allowed.
-
-        Returns:
-            List of length *n_queries* with per-query sample counts.
-        """
+        """Return per-query sample counts summing to at most *budget*."""
 
     @property
     @abstractmethod
@@ -28,35 +17,21 @@ class Allocator(ABC):
 
 
 class BaseAllocator(ABC):
-    """Abstract base class for MCKP-style compute budget allocators.
+    """Base interface for compute allocation algorithms.
 
-    All allocators must implement the ``allocate`` method, which takes a
-    profit matrix, a cost vector, and a budget, and returns an allocation
-    result.
+    Subclasses must implement ``allocate``, which assigns one compute level
+    per query while respecting a global integer budget.
     """
 
     @abstractmethod
-    def allocate(self, profits: Any, costs: Any, budget: int) -> dict:
+    def allocate(self, profits, costs, budget: int) -> dict:
         """Allocate compute levels to queries under a total budget.
 
-        Parameters
-        ----------
-        profits:
-            2-D array-like of shape ``[n_queries, n_levels]`` where
-            ``profits[i][k]`` is the predicted utility of assigning level
-            *k* to query *i*.
-        costs:
-            1-D array-like of length ``n_levels`` where ``costs[k]`` is
-            the integer compute cost of level *k*.
-        budget:
-            Total integer compute budget available across all queries.
+        Args:
+            profits: 2-D array-like ``[n_queries, n_levels]`` of utilities.
+            costs: 1-D array-like ``[n_levels]`` of integer compute costs.
+            budget: Total integer compute budget.
 
-        Returns
-        -------
-        dict
-            A dictionary containing at least:
-
-            * ``selected_levels`` – list of ints, one per query.
-            * ``total_profit`` – total achieved profit (float).
-            * ``total_cost`` – total compute cost used (int).
+        Returns:
+            Dict with ``selected_levels``, ``total_profit``, ``total_cost``.
         """

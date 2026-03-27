@@ -12,6 +12,7 @@ outputs/
 .venv/
 venv/
 *.env
+.env
 
 .ruff_cache/
 .pytest_cache/
