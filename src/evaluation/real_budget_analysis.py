@@ -228,7 +228,7 @@ def flatten_real_budget_runs_for_csv(runs: list[dict[str, Any]]) -> list[dict[st
             "accuracy": float(run["accuracy"]),
             "total_compute_used": int(run["total_compute_used"]),
             "average_compute_per_query": float(run["average_compute_per_query"]),
-            "n_samples_per_query": int(run["n_samples_per_query"]),
+            "n_samples_per_query": int(run.get("n_samples_per_query", 1)),
         }
         for run in runs
     ]

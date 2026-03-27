@@ -12,7 +12,12 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.evaluation.real_budget_analysis import run_real_budget_sweep
+from src.evaluation.real_budget_analysis import (
+    flatten_real_budget_comparisons_for_csv,
+    flatten_real_budget_runs_for_csv,
+    run_real_budget_sweep,
+    write_csv_rows,
+)
 from src.utils.config import load_config
 
 
@@ -21,10 +26,22 @@ def run(config: dict[str, Any]) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     result = run_real_budget_sweep(config)
+    per_run_csv = write_csv_rows(
+        flatten_real_budget_runs_for_csv(result["runs"]),
+        output_dir / "real_budget_runs.csv",
+    )
+    comparison_csv = write_csv_rows(
+        flatten_real_budget_comparisons_for_csv(result["comparisons"]),
+        output_dir / "real_budget_comparisons.csv",
+    )
     payload = {
         "run_type": "real_budget_sweep",
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "config": config,
+        "paths": {
+            "per_run_csv": str(per_run_csv),
+            "comparison_csv": str(comparison_csv),
+        },
         **result,
     }
 

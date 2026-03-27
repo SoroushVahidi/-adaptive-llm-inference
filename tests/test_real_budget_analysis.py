@@ -2,7 +2,10 @@ import pytest
 
 from src.datasets.gsm8k import Query
 from src.evaluation import real_budget_analysis
-from src.evaluation.real_budget_analysis import flatten_real_budget_runs_for_csv, run_real_budget_sweep
+from src.evaluation.real_budget_analysis import (
+    flatten_real_budget_runs_for_csv,
+    run_real_budget_sweep,
+)
 
 
 def test_real_budget_sweep_runs_multiple_budgets_with_dummy_model() -> None:
@@ -73,6 +76,7 @@ def test_flatten_real_budget_runs_for_csv_is_well_formed() -> None:
             "accuracy": 0.4,
             "total_compute_used": 5,
             "average_compute_per_query": 1.0,
+            "n_samples_per_query": 1,
         }
     ]
 

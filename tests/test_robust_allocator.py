@@ -61,7 +61,9 @@ def test_robust_allocator_works_on_noisy_utility_tables() -> None:
         budget=5,
     )
 
-    realized_profit = sum(clean_table[i][level] for i, level in enumerate(result["selected_levels"]))
+    realized_profit = sum(
+        clean_table[i][level] for i, level in enumerate(result["selected_levels"])
+    )
     assert result["total_cost"] <= 5
     assert realized_profit >= 0.0
     assert len(result["selected_levels"]) == len(clean_table)
