@@ -1,12 +1,23 @@
-"""Self-consistency baseline: majority vote over N samples."""
+"""Self-consistency baseline: normalized numeric majority vote over N samples."""
 
 from __future__ import annotations
 
 from collections import Counter
+from decimal import Decimal, InvalidOperation
 
 from src.baselines.base import Baseline, BaselineResult
 from src.models.base import Model
 from src.utils.answer_extraction import extract_numeric_answer
+
+
+def _normalize_numeric_vote(value: str) -> str:
+    """Normalize parsed numeric strings so numerically equivalent votes merge."""
+    candidate = value.strip().replace(",", "")
+    try:
+        normalized = Decimal(candidate)
+    except InvalidOperation:
+        return candidate
+    return format(normalized.normalize(), "f").rstrip("0").rstrip(".") or "0"
 
 
 class SelfConsistencyBaseline(Baseline):
@@ -27,7 +38,7 @@ class SelfConsistencyBaseline(Baseline):
         self, query_id: str, question: str, ground_truth: str, n_samples: int = 5
     ) -> BaselineResult:
         raw_answers = self.model.generate_n(question, n_samples)
-        extracted = [extract_numeric_answer(a) for a in raw_answers]
+        extracted = [_normalize_numeric_vote(extract_numeric_answer(a)) for a in raw_answers]
         counter = Counter(extracted)
         majority = counter.most_common(1)[0][0]
         return BaselineResult(

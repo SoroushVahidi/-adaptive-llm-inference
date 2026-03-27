@@ -121,9 +121,18 @@ For a minimal real-LLM validation run on GSM8K:
 python3 scripts/run_real_llm_experiment.py --config configs/real_llm_gsm8k.yaml
 ```
 
-This writes per-query logs and summary JSON under `outputs/real_llm/`. A real
-OpenAI-compatible API key is required for actual LLM execution; the local stub
-mode exists only for lightweight tests.
+This writes summary JSON under `outputs/real_llm/` using a real OpenAI backend.
+
+For a focused real-data diagnostic comparing prompt style and small extra
+compute on the same GSM8K subset:
+
+```bash
+# compare direct vs reasoning-friendly prompting and best-of-3 / self-consistency
+python3 scripts/run_real_llm_diagnostic.py --config configs/real_llm_gsm8k_diagnostic.yaml
+```
+
+This writes summary JSON plus per-query diagnostic CSV/JSON under
+`outputs/real_llm_diagnostic/`.
 
 ## Tests & Linting
 

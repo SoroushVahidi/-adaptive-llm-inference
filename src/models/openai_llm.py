@@ -119,3 +119,16 @@ class OpenAILLMModel(Model):
             n=n,
             temperature=self.sample_temperature,
         )
+
+    def with_prompt_prefix(self, prompt_prefix: str) -> "OpenAILLMModel":
+        """Create a shallow copy that changes only the prompt prefix."""
+        cloned = OpenAILLMModel(
+            model_name=self.model_name,
+            base_url=self.base_url,
+            greedy_temperature=self.greedy_temperature,
+            sample_temperature=self.sample_temperature,
+            max_tokens=self.max_tokens,
+            timeout_seconds=self.timeout_seconds,
+            prompt_prefix=prompt_prefix,
+        )
+        return cloned
