@@ -1,0 +1,110 @@
+available_components:
+  prompt_types:
+    - direct
+    - reasoning
+    - structured_direct
+    - structured_reasoning
+    - double_check
+    - verify
+    - revise
+    - critique
+    - hint_guided_reasoning
+
+  sample_counts:
+    - 1
+    - 2
+    - 3
+
+  stage_structures:
+    - one_shot
+    - parallel_vote
+    - direct_then_verify
+    - direct_then_revise
+    - direct_then_critique_then_final
+    - first_pass_then_hint_guided_reason
+
+  model_slots:
+    - cheap_model
+    - middle_model
+    - strong_model
+
+curated_strategies:
+  - name: direct_greedy
+    prompt_types: [direct]
+    sample_count: 1
+    stage_structure: one_shot
+    model_slot: cheap_model
+    rationale: Minimal-cost single direct answer baseline.
+    expected_cost_tier: low
+
+  - name: reasoning_greedy
+    prompt_types: [reasoning]
+    sample_count: 1
+    stage_structure: one_shot
+    model_slot: cheap_model
+    rationale: Single-sample chain-of-thought style baseline for better reasoning depth.
+    expected_cost_tier: low
+
+  - name: reasoning_best_of_3
+    prompt_types: [reasoning]
+    sample_count: 3
+    stage_structure: parallel_vote
+    model_slot: cheap_model
+    rationale: Diversity from three reasoning samples with lightweight vote/selection.
+    expected_cost_tier: medium
+
+  - name: structured_sampling_3
+    prompt_types: [structured_reasoning]
+    sample_count: 3
+    stage_structure: parallel_vote
+    model_slot: cheap_model
+    rationale: Structured outputs improve parseability while preserving sample diversity.
+    expected_cost_tier: medium
+
+  - name: direct_plus_verify
+    prompt_types: [direct, verify]
+    sample_count: 1
+    stage_structure: direct_then_verify
+    model_slot: cheap_model
+    rationale: Adds explicit verification stage to catch obvious first-pass errors.
+    expected_cost_tier: medium
+
+  - name: direct_plus_revise
+    prompt_types: [direct, revise]
+    sample_count: 1
+    stage_structure: direct_then_revise
+    model_slot: cheap_model
+    rationale: Revision stage enables self-correction after first response.
+    expected_cost_tier: medium
+
+  - name: direct_plus_critique_plus_final
+    prompt_types: [direct, critique, revise]
+    sample_count: 1
+    stage_structure: direct_then_critique_then_final
+    model_slot: cheap_model
+    rationale: Critique-then-finalization can improve faithfulness with bounded extra cost.
+    expected_cost_tier: high
+
+  - name: first_pass_then_hint_guided_reason
+    prompt_types: [direct, hint_guided_reasoning]
+    sample_count: 1
+    stage_structure: first_pass_then_hint_guided_reason
+    model_slot: middle_model
+    rationale: Uses a cheap first pass then guided reasoning for difficult cases.
+    expected_cost_tier: medium
+
+  - name: strong_direct
+    prompt_types: [direct]
+    sample_count: 1
+    stage_structure: one_shot
+    model_slot: strong_model
+    rationale: High-capability single-call reference point for quality/cost frontier.
+    expected_cost_tier: medium
+
+  - name: strong_structured_placeholder
+    prompt_types: [structured_reasoning]
+    sample_count: 2
+    stage_structure: parallel_vote
+    model_slot: strong_model
+    rationale: Placeholder for strong-model structured decoding experiments.
+    expected_cost_tier: high
