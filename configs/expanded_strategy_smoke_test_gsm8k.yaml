@@ -1,0 +1,23 @@
+dataset:
+  name: gsm8k
+  split: test
+  max_samples: 20
+  # Bundled offline data file — remove to download from HuggingFace when online.
+  data_file: src/datasets/bundled/gsm8k_test_sample.json
+
+model:
+  name: gpt-4o-mini
+  greedy_temperature: 0.0
+  sample_temperature: 0.7
+  max_tokens: 512
+  timeout_seconds: 60
+
+strategies:
+  - direct_greedy
+  - structured_sampling_3
+  - direct_plus_verify
+  - direct_plus_revise
+  - direct_plus_critique_plus_final
+  - first_pass_then_hint_guided_reason
+
+output_dir: outputs/expanded_strategy_smoke_test

@@ -1,0 +1,102 @@
+[
+  {
+    "id": "gsm8k_test_0",
+    "question": "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May?",
+    "answer": "#### 72"
+  },
+  {
+    "id": "gsm8k_test_1",
+    "question": "Weng earns $12 an hour for babysitting. Yesterday, she just did 50 minutes of babysitting. How much did she earn?",
+    "answer": "#### 10"
+  },
+  {
+    "id": "gsm8k_test_2",
+    "question": "Betty is saving money for a new wallet which costs $100. Betty has only half of the money she needs. Her parents decided to give her $15 for that purpose, and her grandparents twice as much as her parents. How much more money does Betty need to buy the wallet?",
+    "answer": "#### 5"
+  },
+  {
+    "id": "gsm8k_test_3",
+    "question": "Julie is reading a 120-page book. Yesterday, she was able to read 12 pages and today, she read twice as many pages as yesterday. If she wants to read half of the remaining pages tomorrow, how many pages should she read?",
+    "answer": "#### 54"
+  },
+  {
+    "id": "gsm8k_test_4",
+    "question": "James writes a 3-page letter to 2 different friends twice a week. How many pages does he write a year?",
+    "answer": "#### 624"
+  },
+  {
+    "id": "gsm8k_test_5",
+    "question": "Mark has a garden with flowers. He planted plants of 3 types: flowers, bushes and trees. The total number of flowers is 18, and there are 3 times as many bushes as flowers. The number of trees is 5 less than the number of bushes. Find the total number of plants in Mark's garden.",
+    "answer": "#### 91"
+  },
+  {
+    "id": "gsm8k_test_6",
+    "question": "Albert is wondering how much pizza he can eat in one day. He buys 2 large pizzas and 2 small pizzas. A large pizza has 16 slices and a small pizza has 8 slices. If he eats it all, how many pieces does he eat that day?",
+    "answer": "#### 48"
+  },
+  {
+    "id": "gsm8k_test_7",
+    "question": "Ken created a care package to send to his brother, who was away at boarding school. Ken packed half of his 14 cookies in the package. He also sent 2 of his 8 action figures and 1 out of his 5 books. How many items did he send in total?",
+    "answer": "#### 10"
+  },
+  {
+    "id": "gsm8k_test_8",
+    "question": "Alexis is applying for a new job and bought a new set of business clothes to wear to the interview. She went to a department store with a budget of $200 and spent $30 on a button-up shirt, $46 on suit pants, $38 on a suit coat, $11 on socks, and $18 on a belt. She also purchased a pair of shoes, but lost the receipt for them. She has $16 left from her budget. How much did Alexis pay for the shoes?",
+    "answer": "#### 41"
+  },
+  {
+    "id": "gsm8k_test_9",
+    "question": "Tina makes $18.00 an hour. If she works more than 8 hours per shift, she is eligible for overtime, which is paid by your hourly wage + 1/2 your hourly wage. If she works 10 hours how much money does she make?",
+    "answer": "#### 198"
+  },
+  {
+    "id": "gsm8k_test_10",
+    "question": "A deep-sea monster rises from the waters once every hundred years to feast on a ship and sate its hunger. Over three hundred years, it has consumed 10 people. Ships have been searched 10 times each time the monster appeared. How many people were on each ship?",
+    "answer": "#### 25"
+  },
+  {
+    "id": "gsm8k_test_11",
+    "question": "Tobias is buying a new pair of shoes that costs $95. He has been saving up his allowance for several weeks. He gets a $5 allowance per week. He has already spent $15 out of his savings. If he has been saving for 3 weeks, how much more money does he need to buy the shoes?",
+    "answer": "#### 65"
+  },
+  {
+    "id": "gsm8k_test_12",
+    "question": "Randy has 60 mango trees on his farm. He also has 5 less than half as many coconut trees as mango trees. How many trees does Randy have in all?",
+    "answer": "#### 85"
+  },
+  {
+    "id": "gsm8k_test_13",
+    "question": "Jasmine had 3 paperclips on Monday, then she had 6 on Tuesday, and her number of paperclips proceeded to double on each subsequent day. On what day of the week did she first have more than 100 paperclips?",
+    "answer": "#### Sunday"
+  },
+  {
+    "id": "gsm8k_test_14",
+    "question": "It takes Matthew 3 minutes to dig a small hole and 10 minutes to dig a big hole. If he digs 4 small holes and 3 big holes, how many minutes does it take?",
+    "answer": "#### 42"
+  },
+  {
+    "id": "gsm8k_test_15",
+    "question": "In a car dealership with 600 cars, 60% of the cars are hybrids, and 40% of the hybrids contain only one headlight. How many of the hybrids have full headlights?",
+    "answer": "#### 216"
+  },
+  {
+    "id": "gsm8k_test_16",
+    "question": "A farmer is buying feed for his horses. He buys a variety of hay, oats, carrots and sugar cubes. Since sugar cubes are a rare treat, he only buys two 1-pound boxes of them for the whole stable. He only wants enough carrots to feed the horses while the vegetables are fresh, so he buys four 12-pound bags. Hay is the main diet of his horses, so he buys forty-two 75-pound bales. Oats are a staple to supplement the hay, so he buys twenty 65-pound sacks. If his farm truck can carry 2250 pounds, how many trips does the farmer need to take to transport all the feed?",
+    "answer": "#### 7"
+  },
+  {
+    "id": "gsm8k_test_17",
+    "question": "Melanie is a door-to-door salesperson. She gets a $10 commission for the first 10 sales, then $15 for every sale after. If she made 15 sales, what was her total commission?",
+    "answer": "#### 175"
+  },
+  {
+    "id": "gsm8k_test_18",
+    "question": "At the beginning of the day there were 74 apples in a basket. During the day, 17 more apples were added to the basket and 31 apples were removed. How many apples are in the basket at the end of the day?",
+    "answer": "#### 60"
+  },
+  {
+    "id": "gsm8k_test_19",
+    "question": "Carolyn practices the piano for 20 minutes a day and the violin for three times as long. If she practices six days a week, how many minutes does she practice in a week?",
+    "answer": "#### 480"
+  }
+]
