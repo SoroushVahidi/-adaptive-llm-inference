@@ -315,7 +315,10 @@ def summarize_constraint_signal_firing(rows: list[dict[str, Any]]) -> list[dict[
             if signal_name in row:
                 fired = bool(row[signal_name])
             else:
-                triggered = row.get("triggered_constraint_signals", [])
+                triggered = row.get(
+                    "triggered_constraint_signals",
+                    row.get("triggered_signals", []),
+                )
                 if isinstance(triggered, str):
                     triggered = [item for item in triggered.split(",") if item]
                 fired = signal_name in triggered

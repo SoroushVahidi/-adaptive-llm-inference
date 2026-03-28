@@ -51,6 +51,19 @@ def _write_csv(rows: list[dict[str, Any]], output_path: str | Path) -> str:
     return str(path)
 
 
+def _json_safe(value: Any) -> Any:
+    """Recursively convert small non-JSON-native values into JSON-safe ones."""
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    if hasattr(value, "as_tuple"):  # Decimal
+        return str(value)
+    return value
+
+
 def _load_queries(config: dict[str, Any]) -> tuple[list[Query], dict[str, Any]]:
     dataset_cfg = config.get("dataset", {})
     queries = load_gsm8k(
@@ -261,17 +274,24 @@ def _run_policy(
             "samples_used": int(final_result["samples_used"]),
         }
         if policy_explanation is not None:
-            row["policy_explanation"] = json.dumps(policy_explanation, sort_keys=True)
+            row["policy_explanation"] = json.dumps(
+                _json_safe(policy_explanation),
+                sort_keys=True,
+            )
             question_side = policy_explanation["question_features"]
-            signal_side = policy_explanation.get("constraint_signals")
+            signal_side = policy_explanation.get("constraint_violation_state")
             row["num_numeric_mentions"] = question_side["num_numeric_mentions"]
             row["question_length_words"] = question_side["question_length_words"]
             row["has_multi_step_cue"] = question_side["has_multi_step_cue"]
             row["is_simple"] = question_side["is_simple"]
             row["reasoning_first_output"] = reasoning_first_output
             if signal_side is not None:
-                row["signal_count"] = signal_side["signal_count"]
-                row["triggered_signals"] = ",".join(signal_side["triggered_signals"])
+                row["signal_count"] = signal_side["constraint_signal_count"]
+                row["triggered_signals"] = ",".join(
+                    signal_side["triggered_constraint_signals"]
+                )
+                for signal_name in signal_side["triggered_constraint_signals"]:
+                    row[signal_name] = True
         rows.append(row)
     return rows, revise_trigger_count, fallback_trigger_count
 
