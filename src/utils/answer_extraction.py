@@ -103,6 +103,9 @@ def normalize_math_answer(text: str) -> str:
     candidate = "".join(candidate.split())
     candidate = _normalize_embedded_numbers(candidate)
 
+    if candidate.startswith("(") and candidate.endswith(")") and "," not in candidate[1:-1]:
+        candidate = candidate[1:-1].strip()
+
     if NUMBER_RE.fullmatch(candidate.replace("$", "")):
         return _normalize_number(candidate)
     return candidate

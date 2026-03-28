@@ -397,6 +397,7 @@ def build_comparison_summary(
                 "model": model_name,
                 "reasoning_best_of_3_minus_reasoning_greedy": reasoning_delta,
                 "structured_sampling_3_minus_reasoning_best_of_3": structured_delta,
+                "structured_sampling_3_beats_reasoning_best_of_3": structured_delta > 0,
             }
         )
 

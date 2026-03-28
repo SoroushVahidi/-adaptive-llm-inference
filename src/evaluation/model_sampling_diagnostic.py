@@ -1,17 +1,39 @@
 """Compatibility wrapper for the original GSM8K model-sampling diagnostic."""
 
 from src.evaluation.strategy_diagnostic import (
-    MAX_QUERY_LIMIT,
-    PROMPT_DIRECT,
-    PROMPT_REASONING,
-    STRATEGY_SPECS,
-    build_comparison_summary,
-    classify_access_error,
+    MAX_QUERY_LIMIT as _MAX_QUERY_LIMIT,
+)
+from src.evaluation.strategy_diagnostic import (
+    PROMPT_DIRECT as _PROMPT_DIRECT,
+)
+from src.evaluation.strategy_diagnostic import (
+    PROMPT_REASONING as _PROMPT_REASONING,
+)
+from src.evaluation.strategy_diagnostic import (
+    STRATEGY_SPECS as _STRATEGY_SPECS,
+)
+from src.evaluation.strategy_diagnostic import (
+    build_comparison_summary as _build_comparison_summary,
+)
+from src.evaluation.strategy_diagnostic import (
+    classify_access_error as _classify_access_error,
+)
+from src.evaluation.strategy_diagnostic import (
     format_strategy_diagnostic_summary,
     run_strategy_diagnostic,
-    summarize_rows,
     write_strategy_diagnostic_outputs,
 )
+from src.evaluation.strategy_diagnostic import (
+    summarize_rows as _summarize_rows,
+)
+
+MAX_QUERY_LIMIT = _MAX_QUERY_LIMIT
+PROMPT_DIRECT = _PROMPT_DIRECT
+PROMPT_REASONING = _PROMPT_REASONING
+STRATEGY_SPECS = _STRATEGY_SPECS
+build_comparison_summary = _build_comparison_summary
+classify_access_error = _classify_access_error
+summarize_rows = _summarize_rows
 
 
 def run_model_sampling_diagnostic(config: dict) -> dict:

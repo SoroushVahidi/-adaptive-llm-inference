@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Optional
 
 from datasets import load_dataset
-
 from src.datasets.gsm8k import Query
 from src.utils.answer_extraction import normalize_math_answer
 
