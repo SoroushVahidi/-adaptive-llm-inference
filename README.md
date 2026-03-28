@@ -6,18 +6,6 @@ Adaptive test-time compute allocation for LLM reasoning under budget constraints
 > full research goal, paper positioning, baseline families, and implementation plan.
 > See [`docs/BASELINE_TRACKER.md`](docs/BASELINE_TRACKER.md) for the status of
 > every baseline we plan to compare against.
-> See [`docs/ACTION_SPACE.md`](docs/ACTION_SPACE.md) for the full strategy/action
-> catalog `a = (p, k, s, m)`, including all 12 literature-inspired families and
-> their implementation status.
-> See [`docs/PRECOMPUTATION_FEATURES.md`](docs/PRECOMPUTATION_FEATURES.md) for
-> the lightweight offline feature layer used for query characterisation and
-> future strategy routing.
-> See [`docs/ROUTING_DATASET.md`](docs/ROUTING_DATASET.md) for the routing
-> dataset assembler that combines query features with oracle labels into a
-> flat CSV for offline ML / rule-based routing experiments.
-> See [`docs/FEATURE_GAP_ANALYSIS.md`](docs/FEATURE_GAP_ANALYSIS.md) for the
-> feature gap analysis that identifies what current cheap signals fail to
-> capture for queries where the revise strategy helps.
 
 ## Overview
 
@@ -38,7 +26,7 @@ supports drop-in replacement with API-based LLMs.
 
 ```
 ├── src/
-│   ├── datasets/          # Dataset loaders (GSM8K, routing dataset assembler)
+│   ├── datasets/          # Dataset loaders (GSM8K, MATH500, routing dataset assembler)
 │   ├── models/            # Model interface + dummy implementation
 │   ├── baselines/         # Native baselines
 │   │   └── external/      # Wrappers for official-code baselines
@@ -54,6 +42,7 @@ supports drop-in replacement with API-based LLMs.
 ├── docs/                  # Research documentation
 │   ├── PROJECT_CONTEXT.md # ← read this first
 │   ├── BASELINE_TRACKER.md
+│   ├── ACTION_SPACE.md
 │   ├── PRECOMPUTATION_FEATURES.md
 │   ├── ROUTING_DATASET.md
 │   ├── ROUTER_BASELINE.md
@@ -134,23 +123,6 @@ python3 scripts/run_expanded_strategy_smoke_test.py \
 Outputs are saved to `outputs/expanded_strategy_smoke_test/` (summary JSON,
 summary CSV, per-query CSV).  When blocked (no API key or no network), a
 `summary.json` with `"run_status": "BLOCKED"` is written for traceability.
-
-## Oracle Subset Evaluation
-
-Runs all currently implemented core strategies on a shared 15-query GSM8K
-subset, computes oracle-style summaries, and archives paper-usable records.
-
-```bash
-# Requires OPENAI_API_KEY in environment
-python3 scripts/run_oracle_subset_eval.py --config configs/oracle_subset_eval_gsm8k.yaml
-```
-
-Outputs are saved to `outputs/oracle_subset_eval/` (per-query matrix CSV,
-summary JSON, summary CSV, oracle assignments CSV, pairwise win matrix CSV).
-When blocked (no API key or no network), a `summary.json` with
-`"run_status": "BLOCKED"` is written for traceability.  Experiment logs and
-results are archived to `docs/EXPERIMENT_LOG_ORACLE_SUBSET.md` and
-`docs/RESULTS_ORACLE_SUBSET.md`.
 
 ## Simulated Sweep Diagnostics
 
@@ -270,6 +242,42 @@ python3 scripts/run_model_sampling_diagnostic.py --config configs/model_sampling
 This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
 `outputs/model_sampling_diagnostic/`, including stronger-model access failures
 when the configured stronger model is unavailable.
+
+For the same small strategy comparison on the harder MATH500 benchmark:
+
+```bash
+# compare strategy usefulness on <=20 MATH500 queries with real OpenAI models
+python3 scripts/run_strategy_diagnostic_math500.py \
+    --config configs/strategy_diagnostic_math500.yaml
+```
+
+This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
+`outputs/strategy_diagnostic_math500/`.
+
+For an oracle-style subset analysis over the currently implemented GSM8K
+strategies:
+
+```bash
+# compare direct, reasoning, sampling, and multi-stage strategies on a GSM8K subset
+python3 scripts/run_oracle_subset_eval.py \
+    --config configs/oracle_subset_eval_gsm8k.yaml
+```
+
+This writes `summary.json`, `summary.csv`, `per_query_matrix.csv`,
+`oracle_assignments.csv`, and `pairwise_win_matrix.csv` under
+`outputs/oracle_subset_eval/`.
+
+For a first rule-based adaptive policy baseline that routes between direct,
+reasoning, revise, and rare fallback strategies on GSM8K:
+
+```bash
+# run the simple adaptive strategy router on a small GSM8K subset
+python3 scripts/run_adaptive_policy_eval.py \
+    --config configs/adaptive_policy_gsm8k.yaml
+```
+
+This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
+`outputs/adaptive_policy_v1/`.
 
 ## Tests & Linting
 

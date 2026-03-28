@@ -1,0 +1,65 @@
+dataset:
+  name: gsm8k
+  split: test
+  max_samples: 20
+  data_file: src/datasets/bundled/gsm8k_test_sample.json
+
+models:
+  current: gpt-4o-mini
+  strong: gpt-4o
+
+openai:
+  greedy_temperature: 0.0
+  sample_temperature: 0.7
+  max_tokens: 512
+  timeout_seconds: 60
+
+policy:
+  simple_max_numeric_mentions: 2
+  simple_max_word_count: 28
+  high_complexity_numeric_mentions: 4
+  high_complexity_word_count: 60
+  many_numbers_threshold: 6
+  allow_reasoning_best_of_3: false
+  allow_strong_direct: false
+
+sweep:
+  settings:
+    - name: conservative
+      threshold: 5
+      weights:
+        final_answer_missing_or_unclear: 3
+        parse_failure: 3
+        malformed_output: 3
+        uncertainty_phrase_present: 2
+        too_many_intermediate_numbers_without_clear_final: 2
+        contradiction_like_phrase_present: 2
+        target_mismatch_suspected: 2
+        unit_mismatch_suspected: 2
+        impossible_value_suspected: 2
+    - name: medium
+      threshold: 3
+      weights:
+        final_answer_missing_or_unclear: 2
+        parse_failure: 2
+        malformed_output: 2
+        uncertainty_phrase_present: 1
+        too_many_intermediate_numbers_without_clear_final: 1
+        contradiction_like_phrase_present: 1
+        target_mismatch_suspected: 1
+        unit_mismatch_suspected: 1
+        impossible_value_suspected: 1
+    - name: aggressive
+      threshold: 2
+      weights:
+        final_answer_missing_or_unclear: 2
+        parse_failure: 2
+        malformed_output: 2
+        uncertainty_phrase_present: 1
+        too_many_intermediate_numbers_without_clear_final: 1
+        contradiction_like_phrase_present: 1
+        target_mismatch_suspected: 1
+        unit_mismatch_suspected: 1
+        impossible_value_suspected: 1
+
+output_dir: outputs/adaptive_policy_v3
