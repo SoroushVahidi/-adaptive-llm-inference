@@ -70,6 +70,27 @@ python3 scripts/run_experiment.py --config configs/equal_allocator.yaml
 
 Results are saved as JSON in `outputs/`.
 
+## Strategy Expansion Experiment
+
+Compares five inference strategies on a 20-query GSM8K subset using the real
+OpenAI API (`gpt-4o-mini` by default).  Strategies:
+
+| Strategy | Description | Samples/query |
+|---|---|---|
+| `direct_greedy` | Single direct prompt, greedy decode | 1 |
+| `reasoning_best_of_3` | Step-by-step prompt, 3 samples, majority vote | 3 |
+| `structured_sampling_3` | 3 distinct prompts (direct / step-by-step / solve+check), majority vote | 3 |
+| `direct_plus_verify` | Direct answer + rule-based verifier; corrects if verifier rejects | 2 |
+| `direct_plus_revise` | Direct answer + self-revision prompt; extract final revised answer | 2 |
+
+```bash
+# Requires OPENAI_API_KEY in environment
+python3 scripts/run_strategy_expansion.py --config configs/strategy_expansion_gsm8k.yaml
+```
+
+Outputs are saved to `outputs/strategy_expansion/` (summary JSON, summary CSV,
+per-query CSV).
+
 ## Simulated Sweep Diagnostics
 
 The repository also includes a lightweight synthetic analysis flow for studying

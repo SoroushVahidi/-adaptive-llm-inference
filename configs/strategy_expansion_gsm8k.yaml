@@ -1,0 +1,20 @@
+dataset:
+  name: gsm8k
+  split: test
+  max_samples: 20
+
+model:
+  name: gpt-4o-mini
+  greedy_temperature: 0.0
+  sample_temperature: 0.7
+  max_tokens: 256
+  timeout_seconds: 60
+
+strategies:
+  - direct_greedy
+  - reasoning_best_of_3
+  - structured_sampling_3
+  - direct_plus_verify
+  - direct_plus_revise
+
+output_dir: outputs/strategy_expansion
