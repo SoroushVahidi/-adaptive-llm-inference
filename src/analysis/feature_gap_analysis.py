@@ -25,12 +25,12 @@ from __future__ import annotations
 
 import csv
 import json
-import re
 import statistics
 from pathlib import Path
 from typing import Any
 
 from src.features.precompute_features import extract_query_features
+from src.features.target_quantity_features import extract_target_quantity_features
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -42,30 +42,18 @@ GROUP_REASONING_ENOUGH = "reasoning_enough"
 GROUP_REVISE_NOT_ENOUGH = "revise_not_enough"
 GROUP_UNKNOWN = "unknown"
 
-# Cheap wording-trap signals grounded in GSM8K problem structure.
-# Each pattern targets a class of surface cue known to correlate with
-# incorrect target quantity identification.
-_REMAINING_PATTERN = re.compile(
-    r"\b(?:remaining|left over|left|have left|are left)\b", re.IGNORECASE
-)
-_SUBTRACTION_TRAP_PATTERN = re.compile(
-    r"\b(?:subtract|take away|spend|spent|gave away|gives away|lost|loses|"
-    r"used up|uses up|sold|sells)\b",
-    re.IGNORECASE,
-)
-_TOTAL_EARNED_PATTERN = re.compile(
-    r"\b(?:total|altogether|in all|combined|earned|makes|made|receives|received)\b",
-    re.IGNORECASE,
-)
-_UNIT_MISMATCH_PATTERN = re.compile(
-    r"\b(?:per|each|every|apiece|a piece|per day|per week|per hour|per month)\b",
-    re.IGNORECASE,
-)
-_INTERMEDIATE_QUANTITY_PATTERN = re.compile(
-    r"\b(?:how many (?:does|did|do|will)|how much (?:does|did|do|will)|"
-    r"what is the (?:total|number|amount|cost|price|value))\b",
-    re.IGNORECASE,
-)
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+
+def _parse_bool_int(value: str | None, default: int = 0) -> int:
+    """Parse a string representation of 0/1/True/False into int (0 or 1)."""
+    try:
+        return int(float(value or "0"))
+    except (ValueError, TypeError):
+        return default
 
 
 # ---------------------------------------------------------------------------
@@ -170,11 +158,7 @@ def build_group_map(
     for row in per_query_matrix:
         qid = row.get("question_id", "")
         strat = row.get("strategy", "")
-        correct_raw = row.get("correct", "0")
-        try:
-            correct = int(float(correct_raw))
-        except (ValueError, TypeError):
-            correct = 0
+        correct = _parse_bool_int(row.get("correct", "0"))
         if qid not in strategy_correct:
             strategy_correct[qid] = {}
         strategy_correct[qid][strat] = correct
@@ -185,11 +169,7 @@ def build_group_map(
         qid = row.get("question_id", "")
         if not qid:
             continue
-        direct_correct_raw = row.get("direct_greedy_correct", "0")
-        try:
-            direct_correct = int(float(direct_correct_raw))
-        except (ValueError, TypeError):
-            direct_correct = 0
+        direct_correct = _parse_bool_int(row.get("direct_greedy_correct", "0"))
 
         # Revise correct from matrix if available, else from cheapest_correct
         revise_correct: int | None = None
@@ -218,15 +198,18 @@ def build_group_map(
 
 
 def _extract_wording_trap_features(question_text: str) -> dict[str, int]:
-    """Extract lightweight qualitative wording-trap signals from question text."""
+    """Extract wording-trap signals by delegating to extract_target_quantity_features.
+
+    Maps target_quantity_features names → analysis-layer feature names so that
+    existing CSV column names and BOOL_FEATURES lists remain stable.
+    """
+    tq = extract_target_quantity_features(question_text)
     return {
-        "has_remaining_left_cue": int(bool(_REMAINING_PATTERN.search(question_text))),
-        "has_subtraction_trap_verb": int(bool(_SUBTRACTION_TRAP_PATTERN.search(question_text))),
-        "has_total_earned_cue": int(bool(_TOTAL_EARNED_PATTERN.search(question_text))),
-        "has_unit_per_cue": int(bool(_UNIT_MISMATCH_PATTERN.search(question_text))),
-        "has_intermediate_quantity_ask": int(
-            bool(_INTERMEDIATE_QUANTITY_PATTERN.search(question_text))
-        ),
+        "has_remaining_left_cue": int(tq["asks_remaining_or_left"]),
+        "has_subtraction_trap_verb": int(tq["has_subtraction_trap_verb"]),
+        "has_total_earned_cue": int(tq["asks_total"]),
+        "has_unit_per_cue": int(tq["asks_rate_or_unit"]),
+        "has_intermediate_quantity_ask": int(tq["likely_intermediate_quantity_ask"]),
     }
 
 
@@ -647,34 +630,48 @@ def _summarize_feature_failures(
 
 
 def _candidate_next_signals() -> list[dict[str, str]]:
-    """Return a list of 5 concrete candidate next-step signal ideas."""
+    """Return a list of 5 signal ideas; the first three are now implemented.
+
+    Signals 1–3 are implemented in ``src/features/target_quantity_features``
+    as ``asks_remaining_or_left``, ``has_subtraction_trap_verb``, and
+    ``asks_rate_or_unit`` respectively.  Signals 4–5 remain as future work.
+    """
     return [
         {
-            "signal": "has_remainder_ask",
+            "signal": "asks_remaining_or_left",
             "description": (
                 "Boolean: True when the question surface-form asks for what "
                 "'remains', 'is left', or 'is still needed'. Captures the most "
                 "common form of subtraction-final-step problems."
             ),
-            "implementation": "Regex over 'remaining|left over|left|have left' in question.",
+            "implementation": (
+                "IMPLEMENTED — src/features/target_quantity_features.py: "
+                "asks_remaining_or_left"
+            ),
         },
         {
-            "signal": "subtraction_verb_count",
+            "signal": "has_subtraction_trap_verb",
             "description": (
-                "Integer count of spend/gave/lost/sold verbs. A higher count "
-                "correlates with hidden multi-step subtraction chains that the "
-                "direct pass often short-circuits."
+                "Boolean: True when spend/gave/lost/sold verbs appear. Correlates "
+                "with hidden multi-step subtraction chains that the direct pass "
+                "often short-circuits."
             ),
-            "implementation": "Regex count of subtraction-class verbs in question.",
+            "implementation": (
+                "IMPLEMENTED — src/features/target_quantity_features.py: "
+                "has_subtraction_trap_verb"
+            ),
         },
         {
-            "signal": "per_unit_rate_flag",
+            "signal": "asks_rate_or_unit",
             "description": (
-                "Boolean: True when 'per', 'each', or 'every' appears alongside "
-                "a numeric token. Catches rate×quantity multiplication steps that "
-                "the direct pass may skip."
+                "Boolean: True when 'per', 'each', or 'every' appears. "
+                "Catches rate×quantity multiplication steps that the direct pass "
+                "may skip."
             ),
-            "implementation": "Regex: look for numeric + per/each/every within 5 tokens.",
+            "implementation": (
+                "IMPLEMENTED — src/features/target_quantity_features.py: "
+                "asks_rate_or_unit"
+            ),
         },
         {
             "signal": "first_pass_answer_in_question_flag",
@@ -683,7 +680,7 @@ def _candidate_next_signals() -> list[dict[str, str]]:
                 "as a number in the question text. This is a strong signal that the "
                 "model echoed a given value instead of computing the target."
             ),
-            "implementation": "Check if extracted_answer ∈ numeric_tokens(question_text).",
+            "implementation": "FUTURE — check if extracted_answer ∈ numeric_tokens(question).",
         },
         {
             "signal": "sentence_count_vs_numeric_token_ratio",
@@ -692,7 +689,9 @@ def _candidate_next_signals() -> list[dict[str, str]]:
                 "means many sentences with few numbers — often a narrative problem "
                 "requiring careful tracking of which quantity is final."
             ),
-            "implementation": "Derived from existing question_length and num_numeric fields.",
+            "implementation": (
+                "FUTURE — derive from existing question_length and num_numeric fields."
+            ),
         },
     ]
 

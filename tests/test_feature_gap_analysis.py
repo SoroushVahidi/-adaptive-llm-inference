@@ -185,12 +185,16 @@ def test_build_per_query_features_includes_question_id() -> None:
 
 
 def test_build_per_query_features_includes_wording_trap_signals() -> None:
-    feats = build_per_query_features("q0", "How many apples are left after she gave away 3?")
+    question = "How many apples are left after she gave away 3?"
+    feats = build_per_query_features("q0", question)
     assert "has_remaining_left_cue" in feats
     assert "has_subtraction_trap_verb" in feats
     assert "has_total_earned_cue" in feats
     assert "has_unit_per_cue" in feats
     assert "has_intermediate_quantity_ask" in feats
+    # Verify values, not just key presence
+    assert feats["has_remaining_left_cue"] == 1   # "left" present
+    assert feats["has_subtraction_trap_verb"] == 1  # "gave away" present
 
 
 def test_build_per_query_features_remaining_cue_detected() -> None:
