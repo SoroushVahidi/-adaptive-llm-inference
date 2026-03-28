@@ -6,6 +6,9 @@ Adaptive test-time compute allocation for LLM reasoning under budget constraints
 > full research goal, paper positioning, baseline families, and implementation plan.
 > See [`docs/BASELINE_TRACKER.md`](docs/BASELINE_TRACKER.md) for the status of
 > every baseline we plan to compare against.
+> See [`docs/ACTION_SPACE.md`](docs/ACTION_SPACE.md) for the full strategy/action
+> catalog `a = (p, k, s, m)`, including all 12 literature-inspired families and
+> their implementation status.
 
 ## Overview
 

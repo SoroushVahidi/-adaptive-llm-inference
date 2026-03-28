@@ -3,6 +3,7 @@
 from src.strategies.action_catalog import (
     ActionCatalogValidationError,
     list_curated_strategies,
+    list_model_slots,
     list_prompt_types,
     list_stage_structures,
     load_action_catalog,
@@ -15,5 +16,6 @@ __all__ = [
     "validate_action_catalog",
     "list_prompt_types",
     "list_stage_structures",
+    "list_model_slots",
     "list_curated_strategies",
 ]
