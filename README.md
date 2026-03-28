@@ -9,6 +9,12 @@ Adaptive test-time compute allocation for LLM reasoning under budget constraints
 > See [`docs/ACTION_SPACE.md`](docs/ACTION_SPACE.md) for the full strategy/action
 > catalog `a = (p, k, s, m)`, including all 12 literature-inspired families and
 > their implementation status.
+> See [`docs/PRECOMPUTATION_FEATURES.md`](docs/PRECOMPUTATION_FEATURES.md) for
+> the lightweight offline feature layer used for query characterisation and
+> future strategy routing.
+> See [`docs/ROUTING_DATASET.md`](docs/ROUTING_DATASET.md) for the routing
+> dataset assembler that combines query features with oracle labels into a
+> flat CSV for offline ML / rule-based routing experiments.
 
 ## Overview
 
@@ -29,19 +35,24 @@ supports drop-in replacement with API-based LLMs.
 
 ```
 ├── src/
-│   ├── datasets/          # Dataset loaders (GSM8K)
+│   ├── datasets/          # Dataset loaders (GSM8K, routing dataset assembler)
 │   ├── models/            # Model interface + dummy implementation
 │   ├── baselines/         # Native baselines
 │   │   └── external/      # Wrappers for official-code baselines
 │   ├── allocators/        # Budget allocation strategies
 │   ├── evaluation/        # Metrics and experiment logging
+│   ├── features/          # Lightweight query/first-pass feature extraction
+│   ├── policies/          # Router baselines and routing policies
 │   └── utils/             # Config loading, answer extraction
 ├── configs/               # YAML experiment configs
 ├── scripts/               # Experiment runner
 ├── tests/                 # Unit tests
 ├── docs/                  # Research documentation
 │   ├── PROJECT_CONTEXT.md # ← read this first
-│   └── BASELINE_TRACKER.md
+│   ├── BASELINE_TRACKER.md
+│   ├── PRECOMPUTATION_FEATURES.md
+│   ├── ROUTING_DATASET.md
+│   └── ROUTER_BASELINE.md
 ├── external/              # Official code from baseline papers
 │   ├── tale/
 │   └── best_route/
