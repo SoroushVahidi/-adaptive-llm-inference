@@ -6,6 +6,9 @@ Adaptive test-time compute allocation for LLM reasoning under budget constraints
 > full research goal, paper positioning, baseline families, and implementation plan.
 > See [`docs/BASELINE_TRACKER.md`](docs/BASELINE_TRACKER.md) for the status of
 > every baseline we plan to compare against.
+> See [`docs/ACTION_SPACE.md`](docs/ACTION_SPACE.md) for the full strategy/action
+> catalog `a = (p, k, s, m)`, including all 12 literature-inspired families and
+> their implementation status.
 
 ## Overview
 
@@ -115,6 +118,23 @@ python3 scripts/run_expanded_strategy_smoke_test.py \
 Outputs are saved to `outputs/expanded_strategy_smoke_test/` (summary JSON,
 summary CSV, per-query CSV).  When blocked (no API key or no network), a
 `summary.json` with `"run_status": "BLOCKED"` is written for traceability.
+
+## Oracle Subset Evaluation
+
+Runs all currently implemented core strategies on a shared 15-query GSM8K
+subset, computes oracle-style summaries, and archives paper-usable records.
+
+```bash
+# Requires OPENAI_API_KEY in environment
+python3 scripts/run_oracle_subset_eval.py --config configs/oracle_subset_eval_gsm8k.yaml
+```
+
+Outputs are saved to `outputs/oracle_subset_eval/` (per-query matrix CSV,
+summary JSON, summary CSV, oracle assignments CSV, pairwise win matrix CSV).
+When blocked (no API key or no network), a `summary.json` with
+`"run_status": "BLOCKED"` is written for traceability.  Experiment logs and
+results are archived to `docs/EXPERIMENT_LOG_ORACLE_SUBSET.md` and
+`docs/RESULTS_ORACLE_SUBSET.md`.
 
 ## Simulated Sweep Diagnostics
 

@@ -9,6 +9,8 @@ import yaml
 
 DEFAULT_ACTION_CATALOG_PATH = Path("configs/action_space_catalog.yaml")
 
+VALID_STATUSES: frozenset[str] = frozenset({"implemented", "partial", "placeholder"})
+
 
 class ActionCatalogValidationError(ValueError):
     """Raised when the action catalog contains invalid references or values."""
@@ -30,6 +32,11 @@ def list_prompt_types(catalog: dict[str, Any]) -> list[str]:
 def list_stage_structures(catalog: dict[str, Any]) -> list[str]:
     """Return declared stage structures."""
     return list(catalog["available_components"]["stage_structures"])
+
+
+def list_model_slots(catalog: dict[str, Any]) -> list[str]:
+    """Return declared model slots."""
+    return list(catalog["available_components"]["model_slots"])
 
 
 def list_curated_strategies(catalog: dict[str, Any]) -> list[dict[str, Any]]:
@@ -99,6 +106,13 @@ def validate_action_catalog(catalog: dict[str, Any]) -> None:
         if model_slot not in model_slots:
             raise ActionCatalogValidationError(
                 f"Strategy '{name}' model_slot '{model_slot}' is not declared."
+            )
+
+        status = strategy.get("status")
+        if status not in VALID_STATUSES:
+            raise ActionCatalogValidationError(
+                f"Strategy '{name}' has invalid status '{status}'. "
+                f"Must be one of: {sorted(VALID_STATUSES)}"
             )
 
 

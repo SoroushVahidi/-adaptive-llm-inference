@@ -1,47 +1,100 @@
 available_components:
   prompt_types:
+    # Basic prompt styles
     - direct
     - reasoning
     - structured_direct
     - structured_reasoning
+    # Correction / refinement prompts
     - double_check
     - verify
     - revise
     - critique
+    # Hint-guided and budget-aware prompts
     - hint_guided_reasoning
+    - token_budget
+    # Verifier and search prompts
+    - process_verifier
+    # Search / agentic prompts (placeholder families)
+    - tree_of_thoughts
+    - react
 
   sample_counts:
     - 1
     - 2
     - 3
+    - 5
 
   stage_structures:
+    # Single / parallel
     - one_shot
     - parallel_vote
+    # Sequential correction
     - direct_then_verify
+    - direct_then_double_check
     - direct_then_revise
     - direct_then_critique_then_final
+    # Hint-guided
     - first_pass_then_hint_guided_reason
+    # Token-budget constrained decoding
+    - token_budget_constrained
+    # Early-exit on high-confidence outputs
+    - early_exit
+    # Model-routing (input-adaptive model selection)
+    - model_routing
+    # Input-adaptive compute allocation
+    - difficulty_adaptive
+    - proxy_adaptive
+    # Verifier-guided search
+    - reasoning_plus_verifier
+    - search_plus_process_verifier
+    # Search-style and agentic reasoning (placeholders)
+    - tree_of_thoughts
+    - react
 
   model_slots:
     - cheap_model
     - middle_model
     - strong_model
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Curated strategy catalog
+#
+# status values:
+#   implemented  – runnable end-to-end via existing baselines/methods
+#   partial      – components exist but full pipeline not yet wired together
+#   placeholder  – catalog entry only; no implementation yet
+# ─────────────────────────────────────────────────────────────────────────────
 curated_strategies:
+
+  # ── A. Cheap / direct baselines ──────────────────────────────────────────
+
   - name: direct_greedy
     prompt_types: [direct]
     sample_count: 1
     stage_structure: one_shot
     model_slot: cheap_model
+    status: implemented
     rationale: Minimal-cost single direct answer baseline.
     expected_cost_tier: low
+
+  - name: strong_direct
+    prompt_types: [direct]
+    sample_count: 1
+    stage_structure: one_shot
+    model_slot: strong_model
+    status: implemented
+    rationale: High-capability single-call reference point for quality/cost frontier.
+    expected_cost_tier: medium
+
+  # ── B. Reasoning baselines ────────────────────────────────────────────────
 
   - name: reasoning_greedy
     prompt_types: [reasoning]
     sample_count: 1
     stage_structure: one_shot
     model_slot: cheap_model
+    status: implemented
     rationale: Single-sample chain-of-thought style baseline for better reasoning depth.
     expected_cost_tier: low
 
@@ -50,22 +103,51 @@ curated_strategies:
     sample_count: 3
     stage_structure: parallel_vote
     model_slot: cheap_model
+    status: implemented
     rationale: Diversity from three reasoning samples with lightweight vote/selection.
     expected_cost_tier: medium
+
+  - name: self_consistency
+    prompt_types: [reasoning]
+    sample_count: 5
+    stage_structure: parallel_vote
+    model_slot: cheap_model
+    status: implemented
+    rationale: >
+      Wang et al. (2022) majority-vote decoding over 5 chain-of-thought samples;
+      strong reasoning baseline implemented in src/baselines/self_consistency.py.
+    expected_cost_tier: medium
+
+  # ── C. Structured prompting / diverse sampling ───────────────────────────
 
   - name: structured_sampling_3
     prompt_types: [structured_reasoning]
     sample_count: 3
     stage_structure: parallel_vote
     model_slot: cheap_model
+    status: implemented
     rationale: Structured outputs improve parseability while preserving sample diversity.
     expected_cost_tier: medium
+
+  - name: direct_plus_double_check
+    prompt_types: [direct, double_check]
+    sample_count: 1
+    stage_structure: direct_then_double_check
+    model_slot: cheap_model
+    status: placeholder
+    rationale: >
+      Appends an explicit double-check prompt after the initial direct answer to
+      surface arithmetic or logic errors before committing to a final answer.
+    expected_cost_tier: medium
+
+  # ── D. Sequential correction / self-improvement ──────────────────────────
 
   - name: direct_plus_verify
     prompt_types: [direct, verify]
     sample_count: 1
     stage_structure: direct_then_verify
     model_slot: cheap_model
+    status: implemented
     rationale: Adds explicit verification stage to catch obvious first-pass errors.
     expected_cost_tier: medium
 
@@ -74,6 +156,7 @@ curated_strategies:
     sample_count: 1
     stage_structure: direct_then_revise
     model_slot: cheap_model
+    status: implemented
     rationale: Revision stage enables self-correction after first response.
     expected_cost_tier: medium
 
@@ -82,29 +165,199 @@ curated_strategies:
     sample_count: 1
     stage_structure: direct_then_critique_then_final
     model_slot: cheap_model
+    status: implemented
     rationale: Critique-then-finalization can improve faithfulness with bounded extra cost.
     expected_cost_tier: high
+
+  # ── E. Hint-guided reasoning ─────────────────────────────────────────────
 
   - name: first_pass_then_hint_guided_reason
     prompt_types: [direct, hint_guided_reasoning]
     sample_count: 1
     stage_structure: first_pass_then_hint_guided_reason
     model_slot: middle_model
+    status: implemented
     rationale: Uses a cheap first pass then guided reasoning for difficult cases.
     expected_cost_tier: medium
 
-  - name: strong_direct
+  # ── F. Token-budget strategies ────────────────────────────────────────────
+
+  - name: token_budget_low
+    prompt_types: [token_budget]
+    sample_count: 1
+    stage_structure: token_budget_constrained
+    model_slot: cheap_model
+    status: placeholder
+    rationale: >
+      Instructs the model to answer within a tight token budget (~50 tokens).
+      Tests whether brevity-enforced prompts degrade accuracy less than expected
+      (inspired by budget-constrained inference literature).
+    expected_cost_tier: low
+
+  - name: token_budget_mid
+    prompt_types: [token_budget]
+    sample_count: 1
+    stage_structure: token_budget_constrained
+    model_slot: cheap_model
+    status: placeholder
+    rationale: >
+      Medium token budget (~200 tokens) allowing a short chain-of-thought.
+      Balance point between token_budget_low and unconstrained reasoning.
+    expected_cost_tier: low
+
+  - name: token_budget_high
+    prompt_types: [token_budget]
+    sample_count: 1
+    stage_structure: token_budget_constrained
+    model_slot: cheap_model
+    status: placeholder
+    rationale: >
+      Generous token budget (~500 tokens) as soft ceiling; measures whether
+      explicit budget prompts change decoding behavior vs. unconstrained prompts.
+    expected_cost_tier: medium
+
+  # ── G. Early-exit strategies ─────────────────────────────────────────────
+
+  - name: reasoning_with_early_exit
+    prompt_types: [reasoning]
+    sample_count: 1
+    stage_structure: early_exit
+    model_slot: cheap_model
+    status: placeholder
+    rationale: >
+      Generates a reasoning chain and terminates early when a confidence signal
+      (e.g., repeated answer, high log-prob token) is detected.  Reduces wasted
+      tokens on easy queries (inspired by speculative decoding and early-exit
+      transformer literature).
+    expected_cost_tier: low
+
+  # ── H. Model-routing strategies ──────────────────────────────────────────
+
+  - name: cheap_model_route
     prompt_types: [direct]
     sample_count: 1
-    stage_structure: one_shot
-    model_slot: strong_model
-    rationale: High-capability single-call reference point for quality/cost frontier.
+    stage_structure: model_routing
+    model_slot: cheap_model
+    status: placeholder
+    rationale: Routes all queries to the cheap model tier (lower bound).
+    expected_cost_tier: low
+
+  - name: mid_model_route
+    prompt_types: [direct]
+    sample_count: 1
+    stage_structure: model_routing
+    model_slot: middle_model
+    status: placeholder
+    rationale: Routes all queries to the middle model tier (cost/quality midpoint).
     expected_cost_tier: medium
+
+  - name: strong_model_route
+    prompt_types: [direct]
+    sample_count: 1
+    stage_structure: model_routing
+    model_slot: strong_model
+    status: placeholder
+    rationale: Routes all queries to the strong model tier (upper bound).
+    expected_cost_tier: high
+
+  - name: best_route_style
+    prompt_types: [direct]
+    sample_count: 1
+    stage_structure: model_routing
+    model_slot: middle_model
+    status: placeholder
+    rationale: >
+      Input-adaptive model routing inspired by BEST-Route: a lightweight router
+      selects among cheap / middle / strong models per query to minimise cost
+      subject to a quality threshold.
+    expected_cost_tier: medium
+
+  # ── I. Input-adaptive compute strategies ─────────────────────────────────
+
+  - name: difficulty_adaptive
+    prompt_types: [reasoning]
+    sample_count: 3
+    stage_structure: difficulty_adaptive
+    model_slot: cheap_model
+    status: placeholder
+    rationale: >
+      Allocates extra samples only to queries classified as hard by a difficulty
+      proxy (e.g., question length, entity count).  Easy queries get 1 sample;
+      hard queries get up to k samples.
+    expected_cost_tier: medium
+
+  - name: proxy_adaptive
+    prompt_types: [reasoning]
+    sample_count: 3
+    stage_structure: proxy_adaptive
+    model_slot: cheap_model
+    status: placeholder
+    rationale: >
+      Uses a lightweight proxy signal (confidence score or first-pass answer
+      entropy) to decide per-query sample counts, without a hard difficulty label.
+      Closest to the core adaptive allocation proposal in this repository.
+    expected_cost_tier: medium
+
+  # ── J. Verifier-guided search strategies ─────────────────────────────────
+
+  - name: reasoning_plus_verifier
+    prompt_types: [reasoning, verify]
+    sample_count: 3
+    stage_structure: reasoning_plus_verifier
+    model_slot: cheap_model
+    status: placeholder
+    rationale: >
+      Generates multiple reasoning chains and re-ranks them with an outcome
+      verifier (ORM / reward model).  Inspired by Cobbe et al. (2021) process
+      reward models and Lightman et al. (2023) let's verify step by step.
+    expected_cost_tier: high
+
+  - name: search_plus_process_verifier
+    prompt_types: [reasoning, process_verifier]
+    sample_count: 3
+    stage_structure: search_plus_process_verifier
+    model_slot: middle_model
+    status: placeholder
+    rationale: >
+      Combines beam/tree search over reasoning steps with a per-step process
+      reward model (PRM) to prune low-quality branches early.
+    expected_cost_tier: high
+
+  # ── K. Search-style reasoning ─────────────────────────────────────────────
+
+  - name: tree_of_thoughts_style
+    prompt_types: [tree_of_thoughts]
+    sample_count: 3
+    stage_structure: tree_of_thoughts
+    model_slot: middle_model
+    status: placeholder
+    rationale: >
+      Yao et al. (2023) Tree of Thoughts: explores a tree of intermediate
+      reasoning steps and selects the best path via breadth-first or depth-first
+      search with a value estimator.
+    expected_cost_tier: high
+
+  # ── L. Reason-act / tool-interleaving ────────────────────────────────────
+
+  - name: react_style
+    prompt_types: [react]
+    sample_count: 1
+    stage_structure: react
+    model_slot: middle_model
+    status: placeholder
+    rationale: >
+      Yao et al. (2022) ReAct: interleaves reasoning (thought) and acting
+      (tool-use / search) steps.  Included as a placeholder for future
+      tool-augmented inference experiments.
+    expected_cost_tier: high
+
+  # ── Legacy placeholder ────────────────────────────────────────────────────
 
   - name: strong_structured_placeholder
     prompt_types: [structured_reasoning]
     sample_count: 2
     stage_structure: parallel_vote
     model_slot: strong_model
+    status: partial
     rationale: Placeholder for strong-model structured decoding experiments.
     expected_cost_tier: high
