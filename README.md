@@ -246,6 +246,19 @@ python3 scripts/run_strategy_diagnostic_math500.py \
 This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
 `outputs/strategy_diagnostic_math500/`.
 
+For an oracle-style subset analysis over the currently implemented GSM8K
+strategies:
+
+```bash
+# compare direct, reasoning, sampling, and multi-stage strategies on a GSM8K subset
+python3 scripts/run_oracle_subset_eval.py \
+    --config configs/oracle_subset_eval_gsm8k.yaml
+```
+
+This writes `summary.json`, `summary.csv`, `per_query_matrix.csv`,
+`oracle_assignments.csv`, and `pairwise_win_matrix.csv` under
+`outputs/oracle_subset_eval/`.
+
 ## Tests & Linting
 
 ```bash
