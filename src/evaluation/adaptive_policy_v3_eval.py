@@ -113,9 +113,7 @@ def _config_v2(config: dict[str, Any]) -> AdaptivePolicyV2Config:
     )
 
 
-def _config_v3(config: dict[str, Any], setting_name: str) -> AdaptivePolicyV3Config:
-    sweep_cfg = config.get("sweep", {})
-    setting = dict(sweep_cfg["settings"][setting_name])
+def _config_v3(setting: dict[str, Any]) -> AdaptivePolicyV3Config:
     weights = dict(setting.get("weights", {}))
     return AdaptivePolicyV3Config(
         simple_max_numeric_mentions=int(
@@ -129,7 +127,7 @@ def _config_v3(config: dict[str, Any], setting_name: str) -> AdaptivePolicyV3Con
             setting.get("high_complexity_word_count", 60)
         ),
         many_numbers_threshold=int(setting.get("many_numbers_threshold", 6)),
-        revise_threshold=int(setting.get("revise_threshold", 2)),
+        revise_threshold=int(setting.get("threshold", setting.get("revise_threshold", 2))),
         allow_reasoning_best_of_3=bool(
             setting.get("allow_reasoning_best_of_3", False)
         ),
@@ -387,13 +385,14 @@ def run_adaptive_policy_v3_eval(config: dict[str, Any]) -> dict[str, Any]:
     v2_summary = _summarize_rows("adaptive_policy_v2", v2_rows)
 
     sweep_cfg = config.get("sweep", {})
-    setting_names = list(sweep_cfg["settings"].keys())
+    settings = [dict(setting) for setting in sweep_cfg["settings"]]
     sweep_rows: list[dict[str, Any]] = []
     per_setting_rows: dict[str, list[dict[str, Any]]] = {}
     best_setting_explanation = None
 
-    for setting_name in setting_names:
-        setting_config = _config_v3(config, setting_name)
+    for setting in settings:
+        setting_name = str(setting["name"])
+        setting_config = _config_v3(setting)
         rows, revise_count, fallback_count = _run_policy(
             policy_name=f"adaptive_policy_v3[{setting_name}]",
             chooser=choose_strategy,

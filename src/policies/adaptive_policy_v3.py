@@ -21,6 +21,9 @@ from src.policies.adaptive_policy_v2 import (
     enrich_question_features,
     extract_violation_signals,
 )
+from src.policies.adaptive_policy_v2 import (
+    extract_question_features as extract_question_features_v2,
+)
 
 
 @dataclass(frozen=True)
@@ -73,6 +76,15 @@ def _v2_config(config: AdaptivePolicyV3Config) -> AdaptivePolicyV2Config:
         allow_reasoning_best_of_3=config.allow_reasoning_best_of_3,
         allow_strong_direct=config.allow_strong_direct,
     )
+
+
+def extract_question_features(
+    question_text: str,
+    config: AdaptivePolicyV3Config | None = None,
+) -> dict[str, Any]:
+    """Compatibility wrapper for the v3 policy using v2-style question features."""
+    resolved = config or AdaptivePolicyV3Config()
+    return extract_question_features_v2(question_text, _v2_config(resolved))
 
 
 def compute_revise_score(
