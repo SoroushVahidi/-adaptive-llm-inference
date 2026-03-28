@@ -7,7 +7,8 @@ an inference strategy so that, in future work, a routing model can be trained
 on top of them.
 
 See docs/PRECOMPUTATION_FEATURES.md for design rationale and feature
-descriptions.
+descriptions.  See docs/ROUTING_DATASET.md for how these features are combined
+with oracle labels into a routing dataset.
 """
 
 from __future__ import annotations

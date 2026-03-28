@@ -12,6 +12,9 @@ Adaptive test-time compute allocation for LLM reasoning under budget constraints
 > See [`docs/PRECOMPUTATION_FEATURES.md`](docs/PRECOMPUTATION_FEATURES.md) for
 > the lightweight offline feature layer used for query characterisation and
 > future strategy routing.
+> See [`docs/ROUTING_DATASET.md`](docs/ROUTING_DATASET.md) for the routing
+> dataset assembler that combines query features with oracle labels into a
+> flat CSV for offline ML / rule-based routing experiments.
 
 ## Overview
 
@@ -32,7 +35,7 @@ supports drop-in replacement with API-based LLMs.
 
 ```
 ├── src/
-│   ├── datasets/          # Dataset loaders (GSM8K)
+│   ├── datasets/          # Dataset loaders (GSM8K, routing dataset assembler)
 │   ├── models/            # Model interface + dummy implementation
 │   ├── baselines/         # Native baselines
 │   │   └── external/      # Wrappers for official-code baselines
@@ -46,7 +49,8 @@ supports drop-in replacement with API-based LLMs.
 ├── docs/                  # Research documentation
 │   ├── PROJECT_CONTEXT.md # ← read this first
 │   ├── BASELINE_TRACKER.md
-│   └── PRECOMPUTATION_FEATURES.md
+│   ├── PRECOMPUTATION_FEATURES.md
+│   └── ROUTING_DATASET.md
 ├── external/              # Official code from baseline papers
 │   ├── tale/
 │   └── best_route/
