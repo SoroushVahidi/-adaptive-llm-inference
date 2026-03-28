@@ -42,6 +42,7 @@ supports drop-in replacement with API-based LLMs.
 │   ├── allocators/        # Budget allocation strategies
 │   ├── evaluation/        # Metrics and experiment logging
 │   ├── features/          # Lightweight query/first-pass feature extraction
+│   ├── policies/          # Router baselines and routing policies
 │   └── utils/             # Config loading, answer extraction
 ├── configs/               # YAML experiment configs
 ├── scripts/               # Experiment runner
@@ -50,7 +51,8 @@ supports drop-in replacement with API-based LLMs.
 │   ├── PROJECT_CONTEXT.md # ← read this first
 │   ├── BASELINE_TRACKER.md
 │   ├── PRECOMPUTATION_FEATURES.md
-│   └── ROUTING_DATASET.md
+│   ├── ROUTING_DATASET.md
+│   └── ROUTER_BASELINE.md
 ├── external/              # Official code from baseline papers
 │   ├── tale/
 │   └── best_route/
