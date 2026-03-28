@@ -259,6 +259,18 @@ This writes `summary.json`, `summary.csv`, `per_query_matrix.csv`,
 `oracle_assignments.csv`, and `pairwise_win_matrix.csv` under
 `outputs/oracle_subset_eval/`.
 
+For a first rule-based adaptive policy baseline that routes between direct,
+reasoning, revise, and rare fallback strategies on GSM8K:
+
+```bash
+# run the simple adaptive strategy router on a small GSM8K subset
+python3 scripts/run_adaptive_policy_eval.py \
+    --config configs/adaptive_policy_gsm8k.yaml
+```
+
+This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
+`outputs/adaptive_policy_v1/`.
+
 ## Tests & Linting
 
 ```bash
