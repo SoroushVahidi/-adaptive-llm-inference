@@ -1,4 +1,8 @@
-from src.utils.answer_extraction import extract_numeric_answer
+from src.utils.answer_extraction import (
+    extract_math_answer,
+    extract_numeric_answer,
+    normalize_math_answer,
+)
 
 
 def test_direct_final_numeric_answer() -> None:
@@ -26,6 +30,15 @@ def test_comma_separated_number() -> None:
 
 def test_boxed_answer_is_supported() -> None:
     assert extract_numeric_answer(r"We compute carefully and get \boxed{104}.") == "104"
+
+
+def test_extract_math_answer_prefers_boxed_symbolic_answer() -> None:
+    text = r"We simplify carefully and conclude \boxed{\left( 3, \frac{1}{2} \right)}."
+    assert extract_math_answer(text) == r"(3,\frac{1}{2})"
+
+
+def test_normalize_math_answer_removes_lightweight_latex_wrappers() -> None:
+    assert normalize_math_answer(r"\left( 3, \frac{2}{4} \right).") == r"(3,\frac{2}{4})"
 
 
 def test_reasoning_output_does_not_latch_onto_intermediate_prefix_numbers() -> None:

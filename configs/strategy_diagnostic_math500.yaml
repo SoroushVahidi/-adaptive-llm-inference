@@ -1,0 +1,18 @@
+dataset:
+  name: math500
+  source: HuggingFaceH4/MATH-500
+  split: test
+  max_samples: 10
+  answer_mode: math
+
+models:
+  current: gpt-4o-mini
+  stronger: gpt-4o
+
+openai:
+  greedy_temperature: 0.0
+  sample_temperature: 0.7
+  max_tokens: 512
+  timeout_seconds: 60
+
+output_dir: outputs/strategy_diagnostic_math500

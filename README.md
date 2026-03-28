@@ -26,7 +26,7 @@ supports drop-in replacement with API-based LLMs.
 
 ```
 ├── src/
-│   ├── datasets/          # Dataset loaders (GSM8K)
+│   ├── datasets/          # Dataset loaders (GSM8K, MATH500)
 │   ├── models/            # Model interface + dummy implementation
 │   ├── baselines/         # Native baselines
 │   │   └── external/      # Wrappers for official-code baselines
@@ -234,6 +234,17 @@ python3 scripts/run_model_sampling_diagnostic.py --config configs/model_sampling
 This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
 `outputs/model_sampling_diagnostic/`, including stronger-model access failures
 when the configured stronger model is unavailable.
+
+For the same small strategy comparison on the harder MATH500 benchmark:
+
+```bash
+# compare strategy usefulness on <=20 MATH500 queries with real OpenAI models
+python3 scripts/run_strategy_diagnostic_math500.py \
+    --config configs/strategy_diagnostic_math500.yaml
+```
+
+This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
+`outputs/strategy_diagnostic_math500/`.
 
 ## Tests & Linting
 
