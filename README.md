@@ -91,6 +91,31 @@ python3 scripts/run_strategy_expansion.py --config configs/strategy_expansion_gs
 Outputs are saved to `outputs/strategy_expansion/` (summary JSON, summary CSV,
 per-query CSV).
 
+## Expanded Strategy Smoke-Test
+
+Adds two new prompt families and two new stage structures, compared against the
+four inherited strategies on a 20-query GSM8K subset.
+
+| New prompt family | Used in |
+|---|---|
+| `critique` | `direct_plus_critique_plus_final` |
+| `hint-guided reasoning` | `first_pass_then_hint_guided_reason` |
+
+| New stage structure | Stages | Samples/query |
+|---|---|---|
+| `direct_plus_critique_plus_final` | direct → critique → final-answer | 3 |
+| `first_pass_then_hint_guided_reason` | direct → hint-guided re-solve | 2 |
+
+```bash
+# Requires OPENAI_API_KEY in environment
+python3 scripts/run_expanded_strategy_smoke_test.py \
+    --config configs/expanded_strategy_smoke_test_gsm8k.yaml
+```
+
+Outputs are saved to `outputs/expanded_strategy_smoke_test/` (summary JSON,
+summary CSV, per-query CSV).  When blocked (no API key or no network), a
+`summary.json` with `"run_status": "BLOCKED"` is written for traceability.
+
 ## Simulated Sweep Diagnostics
 
 The repository also includes a lightweight synthetic analysis flow for studying
