@@ -15,6 +15,9 @@ Adaptive test-time compute allocation for LLM reasoning under budget constraints
 > See [`docs/ROUTING_DATASET.md`](docs/ROUTING_DATASET.md) for the routing
 > dataset assembler that combines query features with oracle labels into a
 > flat CSV for offline ML / rule-based routing experiments.
+> See [`docs/FEATURE_GAP_ANALYSIS.md`](docs/FEATURE_GAP_ANALYSIS.md) for the
+> feature gap analysis that identifies what current cheap signals fail to
+> capture for queries where the revise strategy helps.
 
 ## Overview
 
@@ -42,6 +45,7 @@ supports drop-in replacement with API-based LLMs.
 │   ├── allocators/        # Budget allocation strategies
 │   ├── evaluation/        # Metrics and experiment logging
 │   ├── features/          # Lightweight query/first-pass feature extraction
+│   ├── analysis/          # Post-hoc analysis (feature gap, revise-helps)
 │   ├── policies/          # Router baselines and routing policies
 │   └── utils/             # Config loading, answer extraction
 ├── configs/               # YAML experiment configs
@@ -52,7 +56,8 @@ supports drop-in replacement with API-based LLMs.
 │   ├── BASELINE_TRACKER.md
 │   ├── PRECOMPUTATION_FEATURES.md
 │   ├── ROUTING_DATASET.md
-│   └── ROUTER_BASELINE.md
+│   ├── ROUTER_BASELINE.md
+│   └── FEATURE_GAP_ANALYSIS.md
 ├── external/              # Official code from baseline papers
 │   ├── tale/
 │   └── best_route/
