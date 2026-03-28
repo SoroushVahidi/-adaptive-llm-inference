@@ -1,4 +1,5 @@
 from src.datasets.gsm8k import load_gsm8k
+from src.datasets.math500 import load_math500
 from src.datasets.routing_dataset import (
     OracleData,
     assemble_routing_dataset,
@@ -8,6 +9,7 @@ from src.datasets.routing_dataset import (
 
 __all__ = [
     "load_gsm8k",
+    "load_math500",
     "OracleData",
     "load_oracle_files",
     "assemble_routing_dataset",

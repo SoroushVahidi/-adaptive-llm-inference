@@ -21,9 +21,10 @@ from __future__ import annotations
 import csv
 import json
 from collections import defaultdict
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 # Import individual runners from the two existing eval modules so this module
 # does not duplicate any logic.
@@ -31,6 +32,7 @@ from src.evaluation.expanded_strategy_eval import (
     run_direct_plus_critique_plus_final,
     run_first_pass_then_hint_guided_reason,
 )
+from src.evaluation.strategy_diagnostic import classify_access_error
 from src.evaluation.strategy_expansion_eval import (
     run_direct_greedy,
     run_direct_plus_revise,
@@ -38,6 +40,8 @@ from src.evaluation.strategy_expansion_eval import (
     run_reasoning_best_of_3,
     run_structured_sampling_3,
 )
+from src.models.openai_llm import OpenAILLMModel
+from src.utils.answer_extraction import extract_numeric_answer
 
 # ---------------------------------------------------------------------------
 # Typing shim
@@ -48,6 +52,18 @@ class _ModelProtocol(Protocol):
     def generate(self, prompt: str) -> str: ...
     def generate_n(self, prompt: str, n: int) -> list[str]: ...
 
+
+REASONING_GREEDY_PROMPT = (
+    "Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
+)
+
+
+@dataclass(frozen=True)
+class StrategyDefinition:
+    name: str
+    runner: Callable[[Any, str], dict[str, Any]]
+    model_slot: str = "current"
+
 # Cost proxy: number of model invocations (samples) each strategy makes.
 # This is a simple, explicit proxy for computational cost — a strategy that
 # calls the model k times has cost_proxy = k.  Strategies with multiple stages
@@ -55,6 +71,7 @@ class _ModelProtocol(Protocol):
 # verify call = 2).
 STRATEGY_COST_PROXY: dict[str, int] = {
     "direct_greedy": 1,           # 1 model call
+    "reasoning_greedy": 1,        # 1 reasoning-style sample
     "reasoning_best_of_3": 3,     # 3 parallel samples
     "structured_sampling_3": 3,   # 3 sequential prompts
     "direct_plus_verify": 2,      # direct + verify
@@ -67,6 +84,7 @@ STRATEGY_COST_PROXY: dict[str, int] = {
 # Registry of runners for each strategy.
 _ORACLE_RUNNERS: dict[str, Any] = {
     "direct_greedy": run_direct_greedy,
+    "reasoning_greedy": None,  # filled after helper definition
     "reasoning_best_of_3": run_reasoning_best_of_3,
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
@@ -103,6 +121,112 @@ def _normalize(value: str) -> str:
     if "." in normalized:
         normalized = normalized.rstrip("0").rstrip(".")
     return normalized or "0"
+
+
+def run_reasoning_greedy(model: Any, question: str) -> dict[str, Any]:
+    """One reasoning-style sample with the current model."""
+    raw = model.generate(REASONING_GREEDY_PROMPT.format(question=question))
+    answer = _normalize(extract_numeric_answer(raw))
+    return {
+        "raw_outputs": [raw],
+        "predicted_answer": answer,
+        "samples_used": 1,
+    }
+
+
+_ORACLE_RUNNERS["reasoning_greedy"] = run_reasoning_greedy
+
+STRATEGY_DEFINITIONS = {
+    "direct_greedy": StrategyDefinition("direct_greedy", run_direct_greedy),
+    "reasoning_greedy": StrategyDefinition("reasoning_greedy", run_reasoning_greedy),
+    "reasoning_best_of_3": StrategyDefinition(
+        "reasoning_best_of_3",
+        run_reasoning_best_of_3,
+    ),
+    "structured_sampling_3": StrategyDefinition(
+        "structured_sampling_3",
+        run_structured_sampling_3,
+    ),
+    "direct_plus_verify": StrategyDefinition("direct_plus_verify", run_direct_plus_verify),
+    "direct_plus_revise": StrategyDefinition("direct_plus_revise", run_direct_plus_revise),
+    "direct_plus_critique_plus_final": StrategyDefinition(
+        "direct_plus_critique_plus_final",
+        run_direct_plus_critique_plus_final,
+    ),
+    "first_pass_then_hint_guided_reason": StrategyDefinition(
+        "first_pass_then_hint_guided_reason",
+        run_first_pass_then_hint_guided_reason,
+    ),
+    "strong_direct": StrategyDefinition(
+        "strong_direct",
+        run_direct_greedy,
+        model_slot="strong",
+    ),
+}
+
+
+def _build_model(
+    model_name: str,
+    config: dict[str, Any],
+    max_tokens_override: int | None = None,
+) -> OpenAILLMModel:
+    openai_cfg = config.get("openai", {})
+    model_cfg = config.get("model", {})
+    max_tokens = (
+        int(max_tokens_override)
+        if max_tokens_override is not None
+        else int(
+            openai_cfg.get(
+                "max_tokens",
+                model_cfg.get("max_tokens", 256),
+            )
+        )
+    )
+    return OpenAILLMModel(
+        model_name=model_name,
+        base_url=openai_cfg.get("base_url", model_cfg.get("base_url")),
+        greedy_temperature=float(
+            openai_cfg.get("greedy_temperature", model_cfg.get("greedy_temperature", 0.0))
+        ),
+        sample_temperature=float(
+            openai_cfg.get("sample_temperature", model_cfg.get("sample_temperature", 0.7))
+        ),
+        max_tokens=max_tokens,
+        timeout_seconds=float(
+            openai_cfg.get("timeout_seconds", model_cfg.get("timeout_seconds", 60.0))
+        ),
+    )
+
+
+def _probe_model_access(model_name: str, config: dict[str, Any]) -> dict[str, Any]:
+    try:
+        model = _build_model(
+            model_name=model_name,
+            config=config,
+            max_tokens_override=8,
+        )
+        model.generate("What is 1 + 1?")
+    except ValueError as exc:
+        return {
+            "model": model_name,
+            "status": "failed",
+            "error_type": classify_access_error(str(exc)),
+            "error": str(exc),
+        }
+    except RuntimeError as exc:
+        return {
+            "model": model_name,
+            "status": "failed",
+            "error_type": classify_access_error(str(exc)),
+            "error": str(exc),
+        }
+
+    return {
+        "model": model_name,
+        "status": "accessible",
+        "error_type": None,
+        "error": None,
+    }
 
 
 # ---------------------------------------------------------------------------

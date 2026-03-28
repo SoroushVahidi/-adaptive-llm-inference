@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from src.evaluation.model_sampling_diagnostic import (
+from src.evaluation.strategy_diagnostic import (
     MAX_QUERY_LIMIT,
     PROMPT_DIRECT,
     PROMPT_REASONING,
@@ -10,7 +10,7 @@ from src.evaluation.model_sampling_diagnostic import (
     build_comparison_summary,
     classify_access_error,
     summarize_rows,
-    write_model_sampling_diagnostic_outputs,
+    write_strategy_diagnostic_outputs,
 )
 
 
@@ -127,7 +127,7 @@ def test_build_comparison_summary_computes_model_and_strategy_deltas() -> None:
 def test_write_outputs_excludes_per_query_rows_from_summary_json(tmp_path) -> None:
     result = {
         "scientific_intent": "diagnostic",
-        "dataset": {"name": "gsm8k", "num_queries": 1},
+        "dataset": {"name": "math500", "num_queries": 1},
         "models": {"current": "gpt-4o-mini", "stronger": "gpt-4o", "tested": ["gpt-4o-mini"]},
         "access_checks": [],
         "stronger_model_status": {
@@ -153,21 +153,22 @@ def test_write_outputs_excludes_per_query_rows_from_summary_json(tmp_path) -> No
         },
         "per_query_results": [
             {
-                "question_id": "gsm8k_test_0",
+                "question_id": "test/algebra/1.json",
                 "model": "gpt-4o-mini",
                 "strategy": "direct_greedy",
-                "predicted_answer": "12",
-                "parsed_candidate_answers": json.dumps(["12"]),
+                "predicted_answer": "\\frac{1}{2}",
+                "gold_answer": "\\frac{1}{2}",
+                "parsed_candidate_answers": json.dumps(["\\frac{1}{2}"]),
             }
         ],
     }
 
-    paths = write_model_sampling_diagnostic_outputs(result, tmp_path)
+    paths = write_strategy_diagnostic_outputs(result, tmp_path)
 
     summary_payload = json.loads((tmp_path / "summary.json").read_text())
     assert "per_query_results" not in summary_payload
     assert (tmp_path / "summary.csv").read_text().startswith("model,strategy,accuracy")
     assert (tmp_path / "per_query_results.csv").read_text().startswith(
-        "question_id,model,strategy"
+        "question_id,model,strategy,predicted_answer,gold_answer"
     )
     assert paths["summary_json"].endswith("summary.json")

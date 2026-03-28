@@ -1,4 +1,4 @@
-"""Utilities for extracting numeric answers from model output.
+"""Utilities for extracting numeric and lightweight symbolic math answers.
 
 The goal is to prefer a model's *final answer* rather than arbitrary
 intermediate numbers from chain-of-thought text. The extractor is still
@@ -13,11 +13,12 @@ from decimal import Decimal, InvalidOperation
 
 NUMBER_PATTERN = r"-?[$]?[\d,]+(?:\.\d+)?"
 NUMBER_RE = re.compile(NUMBER_PATTERN)
-BOXED_RE = re.compile(r"\\boxed\{([^}]*)\}")
 FINAL_ANSWER_CUE_RE = re.compile(
     r"(?:final answer|answer\s*:|so the answer is|therefore|thus|hence|result\s*:)",
     re.IGNORECASE,
 )
+INLINE_MATH_RE = re.compile(r"\$(.+?)\$", re.DOTALL)
+EMBEDDED_NUMBER_RE = re.compile(r"(?<![A-Za-z\\])-?\d+(?:,\d{3})*(?:\.\d+)?")
 
 
 def _normalize_number(raw: str) -> str:
@@ -40,6 +41,74 @@ def _extract_last_number(text: str) -> str:
     if not matches:
         return ""
     return _normalize_number(matches[-1])
+
+
+def _extract_last_boxed_content(text: str) -> str:
+    marker = r"\boxed{"
+    start = text.rfind(marker)
+    if start == -1:
+        return ""
+
+    idx = start + len(marker)
+    depth = 1
+    chars: list[str] = []
+    while idx < len(text):
+        char = text[idx]
+        if char == "{":
+            depth += 1
+            chars.append(char)
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return "".join(chars).strip()
+            chars.append(char)
+        else:
+            chars.append(char)
+        idx += 1
+    return ""
+
+
+def _normalize_embedded_numbers(text: str) -> str:
+    return EMBEDDED_NUMBER_RE.sub(lambda match: _normalize_number(match.group(0)), text)
+
+
+def normalize_math_answer(text: str) -> str:
+    """Normalize a lightweight math answer for exact-match comparison.
+
+    This is intentionally simple: it removes common LaTeX wrappers and spacing
+    artifacts without trying to symbolically simplify arbitrary expressions.
+    """
+    candidate = text.strip()
+    if not candidate:
+        return ""
+
+    boxed = _extract_last_boxed_content(candidate)
+    if boxed:
+        candidate = boxed
+
+    while candidate.startswith("$") and candidate.endswith("$") and len(candidate) >= 2:
+        candidate = candidate[1:-1].strip()
+
+    candidate = candidate.strip().rstrip(".;,")
+    candidate = candidate.lstrip(":= ").strip()
+    candidate = candidate.replace("\\left", "").replace("\\right", "")
+    candidate = candidate.replace("\\tfrac", "\\frac").replace("\\dfrac", "\\frac")
+    candidate = (
+        candidate.replace("\\,", "")
+        .replace("\\!", "")
+        .replace("\\;", "")
+        .replace("\\:", "")
+        .replace("\n", "")
+    )
+    candidate = "".join(candidate.split())
+    candidate = _normalize_embedded_numbers(candidate)
+
+    if candidate.startswith("(") and candidate.endswith(")") and "," not in candidate[1:-1]:
+        candidate = candidate[1:-1].strip()
+
+    if NUMBER_RE.fullmatch(candidate.replace("$", "")):
+        return _normalize_number(candidate)
+    return candidate
 
 
 def _extract_from_final_cues(text: str) -> str:
@@ -83,9 +152,9 @@ def extract_numeric_answer(text: str) -> str:
     if not stripped:
         return ""
 
-    boxed_matches = BOXED_RE.findall(stripped)
-    if boxed_matches:
-        boxed_answer = _extract_last_number(boxed_matches[-1])
+    boxed_content = _extract_last_boxed_content(stripped)
+    if boxed_content:
+        boxed_answer = _extract_last_number(boxed_content)
         if boxed_answer:
             return boxed_answer
 
@@ -95,3 +164,46 @@ def extract_numeric_answer(text: str) -> str:
             return answer
 
     return ""
+
+
+def extract_math_answer(text: str) -> str:
+    """Extract a final answer from reasoning text for MATH-style evaluation."""
+    stripped = text.strip()
+    if not stripped:
+        return ""
+
+    boxed_content = _extract_last_boxed_content(stripped)
+    if boxed_content:
+        return normalize_math_answer(boxed_content)
+
+    last_match = None
+    for match in FINAL_ANSWER_CUE_RE.finditer(stripped):
+        last_match = match
+    if last_match is not None:
+        trailing = stripped[last_match.end() :].strip()
+        boxed_trailing = _extract_last_boxed_content(trailing)
+        if boxed_trailing:
+            return normalize_math_answer(boxed_trailing)
+
+        inline_math = INLINE_MATH_RE.findall(trailing[:200])
+        if inline_math:
+            return normalize_math_answer(inline_math[-1])
+
+        first_line = trailing.splitlines()[0].strip() if trailing else ""
+        if first_line:
+            return normalize_math_answer(first_line)
+
+    tail_lines = [line.strip() for line in stripped.splitlines() if line.strip()]
+    if tail_lines:
+        tail = "\n".join(tail_lines[-3:])
+        boxed_tail = _extract_last_boxed_content(tail)
+        if boxed_tail:
+            return normalize_math_answer(boxed_tail)
+
+        inline_math = INLINE_MATH_RE.findall(tail)
+        if inline_math:
+            return normalize_math_answer(inline_math[-1])
+
+        return normalize_math_answer(tail_lines[-1])
+
+    return normalize_math_answer(stripped)
