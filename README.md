@@ -26,19 +26,25 @@ supports drop-in replacement with API-based LLMs.
 
 ```
 ├── src/
-│   ├── datasets/          # Dataset loaders (GSM8K, MATH500)
+│   ├── datasets/          # Dataset loaders (GSM8K, MATH500, routing dataset assembler)
 │   ├── models/            # Model interface + dummy implementation
 │   ├── baselines/         # Native baselines
 │   │   └── external/      # Wrappers for official-code baselines
 │   ├── allocators/        # Budget allocation strategies
 │   ├── evaluation/        # Metrics and experiment logging
+│   ├── features/          # Lightweight query/first-pass feature extraction
+│   ├── policies/          # Router baselines and routing policies
 │   └── utils/             # Config loading, answer extraction
 ├── configs/               # YAML experiment configs
 ├── scripts/               # Experiment runner
 ├── tests/                 # Unit tests
 ├── docs/                  # Research documentation
 │   ├── PROJECT_CONTEXT.md # ← read this first
-│   └── BASELINE_TRACKER.md
+│   ├── BASELINE_TRACKER.md
+│   ├── ACTION_SPACE.md
+│   ├── PRECOMPUTATION_FEATURES.md
+│   ├── ROUTING_DATASET.md
+│   └── ROUTER_BASELINE.md
 ├── external/              # Official code from baseline papers
 │   ├── tale/
 │   └── best_route/

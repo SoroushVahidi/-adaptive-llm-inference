@@ -1,12 +1,19 @@
-"""Oracle subset evaluation over the current real-LLM strategy set.
+"""Oracle-subset evaluation: run all core implemented strategies on a shared
+small query subset and compute oracle-style summaries.
 
-This module intentionally reuses the repository's existing strategy
-implementations instead of introducing new methods.  Its purpose is to answer:
+This module provides:
+  - ``run_oracle_subset_eval``  – main evaluation loop (model-agnostic)
+  - ``compute_oracle_summaries``  – per-query and global oracle metrics
+  - ``compute_pairwise_win_matrix``  – NxN strategy comparison table
+  - ``write_oracle_outputs``  – write all output artefacts to disk
 
-1. Whether one-pass reasoning is the main useful intervention.
-2. Whether extra sampling is mostly wasteful on the current subset.
-3. Whether multi-stage corrective strategies recover failures that simple
-   direct or reasoning baselines miss.
+Implemented strategies evaluated (no placeholders):
+  direct_greedy, reasoning_best_of_3, structured_sampling_3,
+  direct_plus_verify, direct_plus_revise,
+  direct_plus_critique_plus_final, first_pass_then_hint_guided_reason
+
+``strong_direct`` is included only when the caller supplies a separate
+``strong_model`` argument.
 """
 
 from __future__ import annotations
@@ -17,9 +24,10 @@ from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
 
-from src.datasets.gsm8k import Query, load_gsm8k
+# Import individual runners from the two existing eval modules so this module
+# does not duplicate any logic.
 from src.evaluation.expanded_strategy_eval import (
     run_direct_plus_critique_plus_final,
     run_first_pass_then_hint_guided_reason,
@@ -35,6 +43,16 @@ from src.evaluation.strategy_expansion_eval import (
 from src.models.openai_llm import OpenAILLMModel
 from src.utils.answer_extraction import extract_numeric_answer
 
+# ---------------------------------------------------------------------------
+# Typing shim
+# ---------------------------------------------------------------------------
+
+
+class _ModelProtocol(Protocol):
+    def generate(self, prompt: str) -> str: ...
+    def generate_n(self, prompt: str, n: int) -> list[str]: ...
+
+
 REASONING_GREEDY_PROMPT = (
     "Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
 )
@@ -46,6 +64,52 @@ class StrategyDefinition:
     runner: Callable[[Any, str], dict[str, Any]]
     model_slot: str = "current"
 
+# Cost proxy: number of model invocations (samples) each strategy makes.
+# This is a simple, explicit proxy for computational cost — a strategy that
+# calls the model k times has cost_proxy = k.  Strategies with multiple stages
+# count each stage call separately (e.g. direct_plus_verify = 1 direct + 1
+# verify call = 2).
+STRATEGY_COST_PROXY: dict[str, int] = {
+    "direct_greedy": 1,           # 1 model call
+    "reasoning_greedy": 1,        # 1 reasoning-style sample
+    "reasoning_best_of_3": 3,     # 3 parallel samples
+    "structured_sampling_3": 3,   # 3 sequential prompts
+    "direct_plus_verify": 2,      # direct + verify
+    "direct_plus_revise": 2,      # direct + revise
+    "direct_plus_critique_plus_final": 3,  # direct + critique + final
+    "first_pass_then_hint_guided_reason": 2,  # first pass + hint-guided
+    "strong_direct": 1,           # 1 call on the strong model
+}
+
+# Registry of runners for each strategy.
+_ORACLE_RUNNERS: dict[str, Any] = {
+    "direct_greedy": run_direct_greedy,
+    "reasoning_greedy": None,  # filled after helper definition
+    "reasoning_best_of_3": run_reasoning_best_of_3,
+    "structured_sampling_3": run_structured_sampling_3,
+    "direct_plus_verify": run_direct_plus_verify,
+    "direct_plus_revise": run_direct_plus_revise,
+    "direct_plus_critique_plus_final": run_direct_plus_critique_plus_final,
+    "first_pass_then_hint_guided_reason": run_first_pass_then_hint_guided_reason,
+    # strong_direct uses the same runner as direct_greedy but with a different
+    # model object that the caller supplies separately.
+    "strong_direct": run_direct_greedy,
+}
+
+CORE_ORACLE_STRATEGIES: list[str] = [
+    "direct_greedy",
+    "reasoning_best_of_3",
+    "structured_sampling_3",
+    "direct_plus_verify",
+    "direct_plus_revise",
+    "direct_plus_critique_plus_final",
+    "first_pass_then_hint_guided_reason",
+]
+
+
+# ---------------------------------------------------------------------------
+# Numeric normalisation (shared, consistent with existing eval modules)
+# ---------------------------------------------------------------------------
 
 def _normalize(value: str) -> str:
     candidate = value.strip().replace(",", "").replace("$", "").rstrip(".")
@@ -70,14 +134,18 @@ def run_reasoning_greedy(model: Any, question: str) -> dict[str, Any]:
     }
 
 
+_ORACLE_RUNNERS["reasoning_greedy"] = run_reasoning_greedy
+
 STRATEGY_DEFINITIONS = {
     "direct_greedy": StrategyDefinition("direct_greedy", run_direct_greedy),
     "reasoning_greedy": StrategyDefinition("reasoning_greedy", run_reasoning_greedy),
     "reasoning_best_of_3": StrategyDefinition(
-        "reasoning_best_of_3", run_reasoning_best_of_3
+        "reasoning_best_of_3",
+        run_reasoning_best_of_3,
     ),
     "structured_sampling_3": StrategyDefinition(
-        "structured_sampling_3", run_structured_sampling_3
+        "structured_sampling_3",
+        run_structured_sampling_3,
     ),
     "direct_plus_verify": StrategyDefinition("direct_plus_verify", run_direct_plus_verify),
     "direct_plus_revise": StrategyDefinition("direct_plus_revise", run_direct_plus_revise),
@@ -89,7 +157,11 @@ STRATEGY_DEFINITIONS = {
         "first_pass_then_hint_guided_reason",
         run_first_pass_then_hint_guided_reason,
     ),
-    "strong_direct": StrategyDefinition("strong_direct", run_direct_greedy, model_slot="strong"),
+    "strong_direct": StrategyDefinition(
+        "strong_direct",
+        run_direct_greedy,
+        model_slot="strong",
+    ),
 }
 
 
@@ -99,18 +171,30 @@ def _build_model(
     max_tokens_override: int | None = None,
 ) -> OpenAILLMModel:
     openai_cfg = config.get("openai", {})
+    model_cfg = config.get("model", {})
     max_tokens = (
         int(max_tokens_override)
         if max_tokens_override is not None
-        else int(openai_cfg.get("max_tokens", 256))
+        else int(
+            openai_cfg.get(
+                "max_tokens",
+                model_cfg.get("max_tokens", 256),
+            )
+        )
     )
     return OpenAILLMModel(
         model_name=model_name,
-        base_url=openai_cfg.get("base_url"),
-        greedy_temperature=float(openai_cfg.get("greedy_temperature", 0.0)),
-        sample_temperature=float(openai_cfg.get("sample_temperature", 0.7)),
+        base_url=openai_cfg.get("base_url", model_cfg.get("base_url")),
+        greedy_temperature=float(
+            openai_cfg.get("greedy_temperature", model_cfg.get("greedy_temperature", 0.0))
+        ),
+        sample_temperature=float(
+            openai_cfg.get("sample_temperature", model_cfg.get("sample_temperature", 0.7))
+        ),
         max_tokens=max_tokens,
-        timeout_seconds=float(openai_cfg.get("timeout_seconds", 60.0)),
+        timeout_seconds=float(
+            openai_cfg.get("timeout_seconds", model_cfg.get("timeout_seconds", 60.0))
+        ),
     )
 
 
@@ -145,495 +229,381 @@ def _probe_model_access(model_name: str, config: dict[str, Any]) -> dict[str, An
     }
 
 
-def _load_queries(config: dict[str, Any]) -> tuple[list[Query], dict[str, Any]]:
-    dataset_cfg = config.get("dataset", {})
-    dataset_name = str(dataset_cfg.get("name", "gsm8k"))
-    if dataset_name != "gsm8k":
-        raise RuntimeError(
-            "Current oracle subset runner only supports gsm8k. The existing multi-stage "
-            "strategy implementations are numeric-answer-only, so extending the full oracle "
-            "strategy set to MATH500 symbolic answers would require broader changes."
-        )
+# ---------------------------------------------------------------------------
+# Main evaluation loop
+# ---------------------------------------------------------------------------
 
-    split = str(dataset_cfg.get("split", "test"))
-    data_file = dataset_cfg.get("data_file")
-    requested_max_samples = int(dataset_cfg.get("max_samples", 20))
-    queries = load_gsm8k(
-        split=split,
-        max_samples=requested_max_samples,
-        cache_dir=str(dataset_cfg.get("cache_dir", "data")),
-        data_file=data_file,
-    )
-    return queries, {
-        "name": "gsm8k",
-        "source": data_file or "openai/gsm8k",
-        "split": split,
-        "requested_max_samples": requested_max_samples,
-        "num_queries": len(queries),
-        "question_ids": [query.id for query in queries],
-    }
-
-
-def _choose_cheapest_correct(
-    rows: list[dict[str, Any]],
-    strategy_order: list[str],
-) -> dict[str, Any] | None:
-    correct_rows = [row for row in rows if bool(row["correct"])]
-    if not correct_rows:
-        return None
-    order_lookup = {strategy: idx for idx, strategy in enumerate(strategy_order)}
-    return min(
-        correct_rows,
-        key=lambda row: (
-            int(row["samples_used"]),
-            order_lookup.get(str(row["strategy"]), 999),
-        ),
-    )
-
-
-def build_oracle_subset_artifacts(
-    per_query_rows: list[dict[str, Any]],
-    strategies: list[str],
-    total_queries: int,
+def run_oracle_subset_eval(
+    model: _ModelProtocol,
+    queries: list[Any],
+    strategies: list[str] | None = None,
+    strong_model: _ModelProtocol | None = None,
 ) -> dict[str, Any]:
-    """Aggregate long-form per-query strategy rows into oracle-style outputs."""
-    by_query: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for row in per_query_rows:
-        by_query[str(row["question_id"])].append(row)
+    """Run all oracle strategies on *queries* and return raw per-query rows.
 
-    direct_name = "direct_greedy"
-    reasoning_name = "reasoning_greedy"
-    order_lookup = {strategy: idx for idx, strategy in enumerate(strategies)}
+    Args:
+        model: Primary model (cheap_model slot).
+        queries: Sequence of objects with ``.id``, ``.question``, ``.answer``.
+        strategies: Which strategies to run.  Defaults to
+            ``CORE_ORACLE_STRATEGIES``.  Pass ``["strong_direct", ...]`` only
+            if *strong_model* is not None.
+        strong_model: Optional stronger model used for ``strong_direct`` only.
 
-    per_query_matrix_rows: list[dict[str, Any]] = []
-    oracle_assignments: list[dict[str, Any]] = []
-    cheapest_correct_counts = {strategy: 0 for strategy in strategies}
-    unique_wins = {strategy: 0 for strategy in strategies}
-    fixes_direct_failures = {strategy: 0 for strategy in strategies}
-    fixes_reasoning_failures = {strategy: 0 for strategy in strategies}
-    no_strategy_succeeded_count = 0
+    Returns:
+        Dict with ``per_query_rows``, ``strategies_run``, ``query_ids``.
+    """
+    if strategies is None:
+        strategies = list(CORE_ORACLE_STRATEGIES)
+    if "strong_direct" in strategies and strong_model is None:
+        strategies = [s for s in strategies if s != "strong_direct"]
 
-    for question_id, rows in by_query.items():
-        sorted_rows = sorted(
-            rows,
-            key=lambda row: order_lookup.get(str(row["strategy"]), 999),
-        )
-        row_by_strategy = {str(row["strategy"]): row for row in sorted_rows}
-        gold_answer = str(sorted_rows[0]["gold_answer"])
-        correct_strategies = [
-            str(row["strategy"]) for row in sorted_rows if bool(row["correct"])
-        ]
-        cheapest_correct = _choose_cheapest_correct(sorted_rows, strategies)
-        cheapest_correct_strategy = (
-            "" if cheapest_correct is None else str(cheapest_correct["strategy"])
-        )
-        if cheapest_correct_strategy:
-            cheapest_correct_counts[cheapest_correct_strategy] += 1
-        if not correct_strategies:
-            no_strategy_succeeded_count += 1
-        if len(correct_strategies) == 1:
-            unique_wins[correct_strategies[0]] += 1
-
-        direct_failed = (
-            direct_name in row_by_strategy and not bool(row_by_strategy[direct_name]["correct"])
-        )
-        reasoning_failed = (
-            reasoning_name in row_by_strategy
-            and not bool(row_by_strategy[reasoning_name]["correct"])
-        )
-        for strategy in correct_strategies:
-            if direct_failed:
-                fixes_direct_failures[strategy] += 1
-            if reasoning_failed:
-                fixes_reasoning_failures[strategy] += 1
-
-        matrix_row: dict[str, Any] = {
-            "question_id": question_id,
-            "gold_answer": gold_answer,
-            "num_correct_strategies": len(correct_strategies),
-            "correct_strategies": json.dumps(correct_strategies),
-            "oracle_strategy": cheapest_correct_strategy,
-            "oracle_correct": bool(correct_strategies),
-            "oracle_cost": (
-                "" if cheapest_correct is None else int(cheapest_correct["samples_used"])
-            ),
-        }
-        for strategy in strategies:
-            row = row_by_strategy.get(strategy)
-            if row is None:
-                matrix_row[f"{strategy}_predicted_answer"] = ""
-                matrix_row[f"{strategy}_correct"] = False
-                matrix_row[f"{strategy}_samples_used"] = ""
-            else:
-                matrix_row[f"{strategy}_predicted_answer"] = row["predicted_answer"]
-                matrix_row[f"{strategy}_correct"] = bool(row["correct"])
-                matrix_row[f"{strategy}_samples_used"] = int(row["samples_used"])
-        per_query_matrix_rows.append(matrix_row)
-
-        oracle_assignments.append(
-            {
-                "question_id": question_id,
-                "gold_answer": gold_answer,
-                "oracle_strategy": cheapest_correct_strategy,
-                "oracle_correct": bool(correct_strategies),
-                "oracle_cost": (
-                    "" if cheapest_correct is None else int(cheapest_correct["samples_used"])
-                ),
-                "correct_strategies": json.dumps(correct_strategies),
-            }
-        )
-
-    summary_rows: list[dict[str, Any]] = []
-    for strategy in strategies:
-        rows = [row for row in per_query_rows if str(row["strategy"]) == strategy]
-        correct_count = sum(1 for row in rows if bool(row["correct"]))
-        total_cost = sum(int(row["samples_used"]) for row in rows)
-        summary_rows.append(
-            {
-                "strategy": strategy,
-                "accuracy": 0.0 if total_queries == 0 else correct_count / total_queries,
-                "correct": correct_count,
-                "total_queries": total_queries,
-                "wins": correct_count,
-                "unique_wins": unique_wins[strategy],
-                "fixes_direct_failures": fixes_direct_failures[strategy],
-                "fixes_reasoning_failures": (
-                    fixes_reasoning_failures[strategy]
-                    if reasoning_name in strategies
-                    else ""
-                ),
-                "cheapest_correct_count": cheapest_correct_counts[strategy],
-                "cheapest_correct_fraction": (
-                    0.0 if total_queries == 0 else cheapest_correct_counts[strategy] / total_queries
-                ),
-                "avg_cost": 0.0 if total_queries == 0 else total_cost / total_queries,
-            }
-        )
-
-    summary_by_strategy = {row["strategy"]: row for row in summary_rows}
-    oracle_correct_count = sum(1 for row in oracle_assignments if bool(row["oracle_correct"]))
-    oracle_costs = [
-        int(row["oracle_cost"])
-        for row in oracle_assignments
-        if str(row["oracle_cost"]).strip()
-    ]
-    direct_accuracy = summary_by_strategy.get(direct_name, {}).get("accuracy")
-    reasoning_accuracy = summary_by_strategy.get(reasoning_name, {}).get("accuracy")
-    strong_direct_accuracy = summary_by_strategy.get("strong_direct", {}).get("accuracy")
-    oracle_accuracy = 0.0 if total_queries == 0 else oracle_correct_count / total_queries
-
-    global_metrics = {
-        "direct_accuracy": direct_accuracy,
-        "reasoning_greedy_accuracy": reasoning_accuracy if reasoning_name in strategies else None,
-        "strong_direct_accuracy": (
-            strong_direct_accuracy if "strong_direct" in summary_by_strategy else None
-        ),
-        "oracle_accuracy": oracle_accuracy,
-        "oracle_minus_direct_gap": (
-            None if direct_accuracy is None else round(oracle_accuracy - float(direct_accuracy), 4)
-        ),
-        "oracle_minus_reasoning_greedy_gap": (
-            None
-            if reasoning_accuracy is None
-            else round(oracle_accuracy - float(reasoning_accuracy), 4)
-        ),
-        "fraction_direct_greedy_already_optimal": (
-            0.0
-            if total_queries == 0
-            else cheapest_correct_counts.get(direct_name, 0) / total_queries
-        ),
-        "fraction_reasoning_greedy_already_optimal": (
-            None
-            if reasoning_name not in strategies or total_queries == 0
-            else cheapest_correct_counts.get(reasoning_name, 0) / total_queries
-        ),
-        "no_strategy_succeeded_count": no_strategy_succeeded_count,
-        "no_strategy_succeeded_fraction": (
-            0.0 if total_queries == 0 else no_strategy_succeeded_count / total_queries
-        ),
-        "average_oracle_cost_on_success": (
-            0.0 if not oracle_costs else sum(oracle_costs) / len(oracle_costs)
-        ),
-    }
-
-    pairwise_win_matrix_rows: list[dict[str, Any]] = []
-    for strategy_a in strategies:
-        row = {"strategy": strategy_a}
-        rows_a = {
-            str(item["question_id"]): item
-            for item in per_query_rows
-            if str(item["strategy"]) == strategy_a
-        }
-        for strategy_b in strategies:
-            rows_b = {
-                str(item["question_id"]): item
-                for item in per_query_rows
-                if str(item["strategy"]) == strategy_b
-            }
-            wins = 0
-            for question_id, row_a in rows_a.items():
-                row_b = rows_b.get(question_id)
-                if row_b is None:
-                    continue
-                if bool(row_a["correct"]) and not bool(row_b["correct"]):
-                    wins += 1
-            row[strategy_b] = wins
-        pairwise_win_matrix_rows.append(row)
-
-    return {
-        "summary_rows": summary_rows,
-        "per_query_matrix_rows": per_query_matrix_rows,
-        "oracle_assignments": oracle_assignments,
-        "pairwise_win_matrix_rows": pairwise_win_matrix_rows,
-        "global_metrics": global_metrics,
-    }
-
-
-def run_oracle_subset_eval(config: dict[str, Any]) -> dict[str, Any]:
-    queries, dataset_metadata = _load_queries(config)
-    models_cfg = config.get("models", {})
-    current_model_name = str(models_cfg["current"])
-    strong_model_name = models_cfg.get("strong")
-    strong_model_label = None if strong_model_name is None else str(strong_model_name)
-
-    requested_strategies = list(
-        config.get(
-            "strategies",
-            [
-                "direct_greedy",
-                "reasoning_greedy",
-                "reasoning_best_of_3",
-                "structured_sampling_3",
-                "direct_plus_verify",
-                "direct_plus_revise",
-                "direct_plus_critique_plus_final",
-                "first_pass_then_hint_guided_reason",
-            ],
-        )
-    )
-    unknown = [
-        strategy
-        for strategy in requested_strategies
-        if strategy not in STRATEGY_DEFINITIONS
-    ]
+    unknown = [s for s in strategies if s not in _ORACLE_RUNNERS]
     if unknown:
-        raise ValueError(f"Unknown strategies requested: {unknown}")
-
-    access_checks: list[dict[str, Any]] = []
-    current_probe = _probe_model_access(current_model_name, config)
-    access_checks.append(current_probe)
-    if current_probe["status"] != "accessible":
-        raise RuntimeError(
-            f"Current model '{current_model_name}' is not accessible: {current_probe['error']}"
-        )
-
-    strong_status: dict[str, Any] | None = None
-    strong_model: OpenAILLMModel | None = None
-    active_strategies = list(requested_strategies)
-    if "strong_direct" in active_strategies:
-        if strong_model_label is None:
-            active_strategies = [s for s in active_strategies if s != "strong_direct"]
-            strong_status = {
-                "model": None,
-                "status": "not_configured",
-                "error_type": "config",
-                "error": "No strong model configured for strong_direct",
-            }
-        else:
-            strong_probe = _probe_model_access(strong_model_label, config)
-            access_checks.append(strong_probe)
-            if strong_probe["status"] == "accessible":
-                strong_model = _build_model(strong_model_label, config)
-                strong_status = {
-                    "model": strong_model_label,
-                    "status": "tested",
-                    "error_type": None,
-                    "error": None,
-                }
-            else:
-                active_strategies = [s for s in active_strategies if s != "strong_direct"]
-                strong_status = strong_probe
-
-    current_model = _build_model(current_model_name, config)
+        raise ValueError(f"Unknown oracle strategies: {unknown}")
 
     per_query_rows: list[dict[str, Any]] = []
-    for query in queries:
-        for strategy in active_strategies:
-            definition = STRATEGY_DEFINITIONS[strategy]
-            model = current_model if definition.model_slot == "current" else strong_model
-            if model is None:
-                raise RuntimeError(f"Strategy '{strategy}' requires an accessible strong model")
-            try:
-                result = definition.runner(model, query.question)
-            except RuntimeError as exc:
-                raise RuntimeError(
-                    f"Strategy '{strategy}' failed on query '{query.id}': {exc}"
-                ) from exc
-            predicted_answer = _normalize(str(result["predicted_answer"]))
-            gold_answer = _normalize(query.answer)
-            per_query_rows.append(
-                {
-                    "question_id": query.id,
-                    "strategy": strategy,
-                    "predicted_answer": predicted_answer,
-                    "gold_answer": gold_answer,
-                    "correct": predicted_answer == gold_answer,
-                    "samples_used": int(result["samples_used"]),
-                    "model": current_model_name
-                    if definition.model_slot == "current"
-                    else strong_model_label,
-                }
-            )
+    query_ids: list[str] = []
 
-    artifacts = build_oracle_subset_artifacts(
-        per_query_rows=per_query_rows,
-        strategies=active_strategies,
-        total_queries=len(queries),
-    )
+    for query in queries:
+        if query.id not in query_ids:
+            query_ids.append(query.id)
+
+        gold = _normalize(query.answer)
+
+        for strategy in strategies:
+            runner = _ORACLE_RUNNERS[strategy]
+            effective_model = strong_model if strategy == "strong_direct" else model
+            result = runner(effective_model, query.question)
+
+            predicted = result["predicted_answer"]
+            correct = predicted == gold
+
+            row: dict[str, Any] = {
+                "question_id": query.id,
+                "strategy": strategy,
+                "predicted_answer": predicted,
+                "gold_answer": gold,
+                "correct": int(correct),
+                "samples_used": result["samples_used"],
+                "cost_proxy": result["samples_used"],
+            }
+            # Carry optional multi-stage fields when present.
+            for key in ("first_answer", "revised_answer", "critique_text"):
+                if key in result:
+                    row[key] = result[key]
+            per_query_rows.append(row)
 
     return {
-        "run_status": "COMPLETED",
-        "dataset": dataset_metadata,
-        "models": {
-            "current": current_model_name,
-            "strong": strong_model_label,
-            "strong_model_status": strong_status,
-        },
-        "access_checks": access_checks,
-        "strategies_run": active_strategies,
         "per_query_rows": per_query_rows,
-        "summary_rows": artifacts["summary_rows"],
-        "per_query_matrix_rows": artifacts["per_query_matrix_rows"],
-        "oracle_assignments": artifacts["oracle_assignments"],
-        "pairwise_win_matrix_rows": artifacts["pairwise_win_matrix_rows"],
-        "global_metrics": artifacts["global_metrics"],
+        "strategies_run": strategies,
+        "query_ids": query_ids,
     }
 
 
-def _write_csv(rows: list[dict[str, Any]], output_path: str | Path) -> str:
-    resolved = Path(output_path)
-    resolved.parent.mkdir(parents=True, exist_ok=True)
-    if not rows:
-        resolved.write_text("")
-        return str(resolved)
-    fieldnames: list[str] = []
-    for row in rows:
-        for key in row:
-            if key not in fieldnames:
-                fieldnames.append(key)
-    with resolved.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({field: row.get(field, "") for field in fieldnames})
-    return str(resolved)
+# ---------------------------------------------------------------------------
+# Oracle summary computation
+# ---------------------------------------------------------------------------
+
+def compute_oracle_summaries(
+    per_query_rows: list[dict[str, Any]],
+    strategies: list[str],
+) -> dict[str, Any]:
+    """Compute per-query oracle assignments and global oracle metrics.
+
+    Per-query oracle fields:
+      - ``best_accuracy_strategies``: list of strategies that are correct
+      - ``cheapest_correct_strategy``: cheapest strategy that is correct
+      - ``direct_greedy_correct``: whether direct_greedy was correct
+      - ``direct_already_optimal``: True when direct_greedy is correct AND is
+        the cheapest correct strategy
+
+    Global summaries:
+      - per-strategy accuracy
+      - oracle_accuracy (fraction of queries where ≥1 strategy correct)
+      - oracle_minus_direct_gap
+      - uniquely_best_count per strategy
+      - among_best_count per strategy
+      - cheapest_correct_count per strategy
+      - fixes_direct_greedy_count per strategy
+    """
+    # Index rows by (question_id, strategy)
+    rows_by_qid: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
+    for row in per_query_rows:
+        rows_by_qid[row["question_id"]][row["strategy"]] = row
+
+    query_ids = list(rows_by_qid.keys())
+
+    # Per-query oracle records
+    per_query_oracle: list[dict[str, Any]] = []
+    for qid in query_ids:
+        strategy_rows = rows_by_qid[qid]
+        correct_strategies = [
+            s for s in strategies if strategy_rows.get(s, {}).get("correct", 0)
+        ]
+        direct_correct = bool(strategy_rows.get("direct_greedy", {}).get("correct", 0))
+
+        # Cheapest correct strategy (ties broken by first in canonical order)
+        cheapest_correct: str | None = None
+        if correct_strategies:
+            cheapest_correct = min(
+                correct_strategies,
+                key=lambda s: STRATEGY_COST_PROXY.get(s, 99),
+            )
+
+        direct_already_optimal = (
+            direct_correct
+            and cheapest_correct == "direct_greedy"
+        )
+
+        per_query_oracle.append({
+            "question_id": qid,
+            "any_correct": len(correct_strategies) > 0,
+            "best_accuracy_strategies": correct_strategies,
+            "cheapest_correct_strategy": cheapest_correct or "",
+            "direct_greedy_correct": int(direct_correct),
+            "direct_already_optimal": int(direct_already_optimal),
+        })
+
+    n_queries = len(query_ids)
+
+    # Global: per-strategy accuracy
+    strategy_accuracy: dict[str, dict[str, Any]] = {}
+    for strategy in strategies:
+        correct_count = sum(
+            1
+            for qid in query_ids
+            if rows_by_qid[qid].get(strategy, {}).get("correct", 0)
+        )
+        strategy_accuracy[strategy] = {
+            "strategy": strategy,
+            "correct": correct_count,
+            "total_queries": n_queries,
+            "accuracy": correct_count / n_queries if n_queries > 0 else 0.0,
+        }
+
+    oracle_correct = sum(1 for r in per_query_oracle if r["any_correct"])
+    oracle_accuracy = oracle_correct / n_queries if n_queries > 0 else 0.0
+    direct_accuracy = (
+        strategy_accuracy.get("direct_greedy", {}).get("accuracy", 0.0)
+    )
+    oracle_minus_direct_gap = oracle_accuracy - direct_accuracy
+
+    # Per-strategy contribution counts
+    uniquely_best: dict[str, int] = defaultdict(int)
+    among_best: dict[str, int] = defaultdict(int)
+    cheapest_correct_counts: dict[str, int] = defaultdict(int)
+    fixes_direct_greedy: dict[str, int] = defaultdict(int)
+
+    for rec in per_query_oracle:
+        best_list = rec["best_accuracy_strategies"]
+        if len(best_list) == 1:
+            uniquely_best[best_list[0]] += 1
+        for s in best_list:
+            among_best[s] += 1
+        cc = rec["cheapest_correct_strategy"]
+        if cc:
+            cheapest_correct_counts[cc] += 1
+        direct_was_wrong = not bool(rec["direct_greedy_correct"])
+        for s in best_list:
+            if s != "direct_greedy" and direct_was_wrong:
+                fixes_direct_greedy[s] += 1
+
+    direct_already_optimal_fraction = (
+        sum(1 for r in per_query_oracle if r["direct_already_optimal"]) / n_queries
+        if n_queries > 0 else 0.0
+    )
+
+    return {
+        "per_query_oracle": per_query_oracle,
+        "strategy_accuracy": strategy_accuracy,
+        "oracle_accuracy": oracle_accuracy,
+        "oracle_correct": oracle_correct,
+        "direct_accuracy": direct_accuracy,
+        "oracle_minus_direct_gap": oracle_minus_direct_gap,
+        "direct_already_optimal_fraction": direct_already_optimal_fraction,
+        "uniquely_best": dict(uniquely_best),
+        "among_best": dict(among_best),
+        "cheapest_correct_counts": dict(cheapest_correct_counts),
+        "fixes_direct_greedy": dict(fixes_direct_greedy),
+        "total_queries": n_queries,
+    }
 
 
-def write_oracle_subset_outputs(
-    result: dict[str, Any],
+# ---------------------------------------------------------------------------
+# Pairwise win matrix
+# ---------------------------------------------------------------------------
+
+def compute_pairwise_win_matrix(
+    per_query_rows: list[dict[str, Any]],
+    strategies: list[str],
+) -> dict[str, Any]:
+    """Compute an NxN pairwise win/loss table.
+
+    ``matrix[A][B]`` = number of queries where A is correct and B is wrong.
+    """
+    rows_by_qid: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
+    for row in per_query_rows:
+        rows_by_qid[row["question_id"]][row["strategy"]] = row
+
+    query_ids = list(rows_by_qid.keys())
+
+    matrix: dict[str, dict[str, int]] = {s: {t: 0 for t in strategies} for s in strategies}
+
+    for qid in query_ids:
+        for s in strategies:
+            for t in strategies:
+                if s == t:
+                    continue
+                s_correct = bool(rows_by_qid[qid].get(s, {}).get("correct", 0))
+                t_correct = bool(rows_by_qid[qid].get(t, {}).get("correct", 0))
+                if s_correct and not t_correct:
+                    matrix[s][t] += 1
+
+    return {"matrix": matrix, "strategies": strategies}
+
+
+# ---------------------------------------------------------------------------
+# Output writers
+# ---------------------------------------------------------------------------
+
+def write_oracle_outputs(
+    eval_result: dict[str, Any],
+    oracle_summaries: dict[str, Any],
+    pairwise: dict[str, Any],
     output_dir: str | Path,
 ) -> dict[str, str]:
+    """Write all oracle evaluation artefacts to *output_dir*.
+
+    Files written:
+      - ``per_query_matrix.csv``
+      - ``summary.json``
+      - ``summary.csv``
+      - ``oracle_assignments.csv``
+      - ``pairwise_win_matrix.csv``
+
+    Returns a dict mapping artefact name → absolute path.
+    """
     base = Path(output_dir)
     base.mkdir(parents=True, exist_ok=True)
+
+    paths: dict[str, str] = {}
+
+    # per_query_matrix.csv
+    per_query_rows = eval_result["per_query_rows"]
+    matrix_csv = base / "per_query_matrix.csv"
+    if per_query_rows:
+        all_fields: list[str] = []
+        for row in per_query_rows:
+            for key in row:
+                if key not in all_fields:
+                    all_fields.append(key)
+        with matrix_csv.open("w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=all_fields, extrasaction="ignore")
+            writer.writeheader()
+            for row in per_query_rows:
+                writer.writerow({k: row.get(k, "") for k in all_fields})
+    paths["per_query_matrix_csv"] = str(matrix_csv)
+
+    # summary.json
     summary_payload = {
-        key: value
-        for key, value in result.items()
-        if key
-        not in {
-            "per_query_rows",
-            "per_query_matrix_rows",
-            "oracle_assignments",
-            "pairwise_win_matrix_rows",
-        }
+        "total_queries": oracle_summaries["total_queries"],
+        "strategies_run": eval_result["strategies_run"],
+        "query_ids": eval_result["query_ids"],
+        "strategy_accuracy": oracle_summaries["strategy_accuracy"],
+        "oracle_accuracy": oracle_summaries["oracle_accuracy"],
+        "oracle_correct": oracle_summaries["oracle_correct"],
+        "direct_accuracy": oracle_summaries["direct_accuracy"],
+        "oracle_minus_direct_gap": oracle_summaries["oracle_minus_direct_gap"],
+        "direct_already_optimal_fraction": oracle_summaries["direct_already_optimal_fraction"],
+        "uniquely_best": oracle_summaries["uniquely_best"],
+        "among_best": oracle_summaries["among_best"],
+        "cheapest_correct_counts": oracle_summaries["cheapest_correct_counts"],
+        "fixes_direct_greedy": oracle_summaries["fixes_direct_greedy"],
     }
     summary_json = base / "summary.json"
     summary_json.write_text(json.dumps(summary_payload, indent=2))
+    paths["summary_json"] = str(summary_json)
 
-    summary_rows = list(result["summary_rows"])
-    summary_rows.append(
-        {
-            "strategy": "__oracle__",
-            "accuracy": result["global_metrics"]["oracle_accuracy"],
-            "correct": int(
-                round(
-                    float(result["global_metrics"]["oracle_accuracy"])
-                    * int(result["dataset"]["num_queries"])
-                )
-            ),
-            "total_queries": result["dataset"]["num_queries"],
-            "wins": "",
-            "unique_wins": "",
-            "fixes_direct_failures": "",
-            "fixes_reasoning_failures": "",
-            "cheapest_correct_count": "",
-            "cheapest_correct_fraction": "",
-            "avg_cost": result["global_metrics"]["average_oracle_cost_on_success"],
-        }
-    )
+    # summary.csv – one row per strategy
+    summaries = list(oracle_summaries["strategy_accuracy"].values())
+    summary_csv = base / "summary.csv"
+    if summaries:
+        fieldnames = list(summaries[0].keys())
+        with summary_csv.open("w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(summaries)
+    paths["summary_csv"] = str(summary_csv)
 
-    return {
-        "summary_json": str(summary_json),
-        "summary_csv": _write_csv(summary_rows, base / "summary.csv"),
-        "per_query_matrix_csv": _write_csv(
-            result["per_query_matrix_rows"],
-            base / "per_query_matrix.csv",
-        ),
-        "oracle_assignments_csv": _write_csv(
-            result["oracle_assignments"],
-            base / "oracle_assignments.csv",
-        ),
-        "pairwise_win_matrix_csv": _write_csv(
-            result["pairwise_win_matrix_rows"],
-            base / "pairwise_win_matrix.csv",
-        ),
-    }
-
-
-def format_oracle_subset_summary(
-    result: dict[str, Any],
-    paths: dict[str, str] | None = None,
-) -> str:
-    lines = [
-        "--- Oracle Subset Evaluation ---",
-        f"dataset: {result['dataset']['name']}",
-        f"queries: {result['dataset']['num_queries']}",
-        f"strategies: {', '.join(result['strategies_run'])}",
-        "",
-        "per-strategy accuracy:",
-    ]
-    for row in result["summary_rows"]:
-        lines.append(
-            "  "
-            f"{row['strategy']} | accuracy={float(row['accuracy']):.4f} | "
-            f"avg_cost={float(row['avg_cost']):.2f} | "
-            f"cheapest_correct={row['cheapest_correct_count']}"
-        )
-    lines.extend(
-        [
-            "",
-            (
-                "oracle_accuracy: "
-                f"{float(result['global_metrics']['oracle_accuracy']):.4f}"
-            ),
-            (
-                "oracle_minus_direct_gap: "
-                f"{result['global_metrics']['oracle_minus_direct_gap']}"
-            ),
-            (
-                "oracle_minus_reasoning_greedy_gap: "
-                f"{result['global_metrics']['oracle_minus_reasoning_greedy_gap']}"
-            ),
+    # oracle_assignments.csv
+    oracle_csv = base / "oracle_assignments.csv"
+    per_q_oracle = oracle_summaries["per_query_oracle"]
+    if per_q_oracle:
+        fieldnames_oracle = [
+            "question_id",
+            "any_correct",
+            "cheapest_correct_strategy",
+            "direct_greedy_correct",
+            "direct_already_optimal",
+            "best_accuracy_strategies",
         ]
-    )
-    if paths is not None:
-        lines.extend(
-            [
-                "",
-                f"summary_json: {paths['summary_json']}",
-                f"summary_csv: {paths['summary_csv']}",
-                f"per_query_matrix_csv: {paths['per_query_matrix_csv']}",
-                f"oracle_assignments_csv: {paths['oracle_assignments_csv']}",
-                f"pairwise_win_matrix_csv: {paths['pairwise_win_matrix_csv']}",
-            ]
+        with oracle_csv.open("w", newline="") as fh:
+            writer = csv.DictWriter(fh, fieldnames=fieldnames_oracle, extrasaction="ignore")
+            writer.writeheader()
+            for row in per_q_oracle:
+                row_out = dict(row)
+                row_out["best_accuracy_strategies"] = "|".join(
+                    row_out.get("best_accuracy_strategies", [])
+                )
+                writer.writerow({k: row_out.get(k, "") for k in fieldnames_oracle})
+    paths["oracle_assignments_csv"] = str(oracle_csv)
+
+    # pairwise_win_matrix.csv
+    pairwise_csv = base / "pairwise_win_matrix.csv"
+    matrix = pairwise["matrix"]
+    strats = pairwise["strategies"]
+    with pairwise_csv.open("w", newline="") as fh:
+        writer_pw = csv.writer(fh)
+        writer_pw.writerow(["strategy_row_wins_vs_col"] + strats)
+        for s in strats:
+            writer_pw.writerow([s] + [matrix[s][t] for t in strats])
+    paths["pairwise_win_matrix_csv"] = str(pairwise_csv)
+
+    return paths
+
+
+# ---------------------------------------------------------------------------
+# Human-readable summary formatter
+# ---------------------------------------------------------------------------
+
+def format_oracle_summary(
+    oracle_summaries: dict[str, Any],
+    paths: dict[str, str],
+) -> str:
+    """Return a human-readable multi-line summary."""
+    lines: list[str] = [
+        "─── Oracle Subset Evaluation ───",
+        f"Queries:          {oracle_summaries['total_queries']}",
+        f"Oracle accuracy:  {oracle_summaries['oracle_accuracy']:.4f}",
+        f"Direct accuracy:  {oracle_summaries['direct_accuracy']:.4f}",
+        f"Oracle-direct gap:{oracle_summaries['oracle_minus_direct_gap']:+.4f}",
+        f"Direct already optimal: "
+        f"{oracle_summaries['direct_already_optimal_fraction']:.1%} of queries",
+        "",
+        f"{'Strategy':<40} {'Acc':>6} {'Corr':>6} {'Fixes↑':>7} {'CheapCorr':>10}",
+        "─" * 73,
+    ]
+    for st, acc in oracle_summaries["strategy_accuracy"].items():
+        fixes = oracle_summaries["fixes_direct_greedy"].get(st, 0)
+        cc = oracle_summaries["cheapest_correct_counts"].get(st, 0)
+        lines.append(
+            f"{st:<40} {acc['accuracy']:>6.4f} {acc['correct']:>6} "
+            f"{fixes:>7} {cc:>10}"
         )
+    lines += [
+        "",
+        "Outputs:",
+    ]
+    for name, path in paths.items():
+        lines.append(f"  {name}: {path}")
     return "\n".join(lines)
