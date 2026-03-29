@@ -6,10 +6,17 @@ dist/
 build/
 .eggs/
 
-data/
+data/*
+!data/real_gsm8k_routing_dataset.csv
 outputs/*
 !outputs/adaptive_policy_v7/
 !outputs/adaptive_policy_v7/**
+!outputs/real_routing_dataset/
+!outputs/real_routing_dataset/**
+!outputs/real_policy_eval/
+!outputs/real_policy_eval/**
+!outputs/real_routing_model/
+!outputs/real_routing_model/**
 results/
 
 .venv/

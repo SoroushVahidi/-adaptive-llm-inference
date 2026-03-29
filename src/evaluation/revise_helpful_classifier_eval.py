@@ -154,6 +154,20 @@ def build_training_rows_from_benchmark(benchmark_path: str | Path) -> list[dict[
     return out
 
 
+def _to_float_feature(v: Any) -> float | None:
+    if isinstance(v, bool):
+        return 1.0 if v else 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
+    text = str(v).strip()
+    if not text:
+        return 0.0
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def _feature_columns(rows: list[dict[str, Any]]) -> list[str]:
     protected = {
         "question_id",
@@ -166,7 +180,14 @@ def _feature_columns(rows: list[dict[str, Any]]) -> list[str]:
         "revise_helpful",
     }
     sample = rows[0] if rows else {}
-    return [c for c in sample if c not in protected]
+    out: list[str] = []
+    for c in sample:
+        if c in protected:
+            continue
+        if _to_float_feature(sample[c]) is None:
+            continue
+        out.append(c)
+    return out
 
 
 def _heuristic_predictions(rows: list[dict[str, Any]]) -> tuple[list[int], list[int]]:
@@ -254,7 +275,10 @@ def _evaluate_with_sklearn(
     from sklearn.preprocessing import StandardScaler
     from sklearn.tree import DecisionTreeClassifier
 
-    X = [[float(row.get(col, 0.0)) for col in feature_columns] for row in rows]
+    X = [
+        [_to_float_feature(row.get(col, 0.0)) or 0.0 for col in feature_columns]
+        for row in rows
+    ]
     y = [int(row["revise_helpful"]) for row in rows]
 
     class_count = len(set(y))

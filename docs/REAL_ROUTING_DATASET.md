@@ -22,11 +22,15 @@ The synthetic benchmark is still useful for controlled diagnostics, but it is no
 
 ## Current run status
 
+**Completed run (100 queries):** see `docs/REAL_GSM8K_ROUTING_STUDY.md` and `outputs/real_routing_dataset/gsm8k_subset_run_summary.json` (**measured_now**).
+
 Run command:
 
 ```bash
-python3 scripts/run_build_real_routing_dataset.py --subset-size 20
+python3 scripts/run_build_real_routing_dataset.py --subset-size 100
 ```
+
+Use `--gsm8k-data-file path/to/normalized.jsonl` when a local normalized file exists; otherwise the builder uses **HuggingFace** `openai/gsm8k` for subsets larger than the bundled 20-row JSON.
 
 In this environment, the run is blocked when `OPENAI_API_KEY` is missing or model access fails. In blocked mode, we write:
 

@@ -297,6 +297,28 @@ python3 scripts/run_adaptive_policy_v7_eval.py
 
 Writes under `outputs/adaptive_policy_v7/`. See `docs/ADAPTIVE_POLICY_V7.md`.
 
+### Real GSM8K routing dataset and policy eval (API)
+
+Build paired outcomes (`reasoning_greedy` + `direct_plus_revise`) and feature columns:
+
+```bash
+python3 scripts/run_build_real_routing_dataset.py --subset-size 100
+```
+
+Evaluate v5/v6/v7 on `data/real_gsm8k_routing_dataset.csv`:
+
+```bash
+python3 scripts/run_real_policy_eval.py
+```
+
+Train/evaluate tree ensembles on `revise_helpful` (requires scikit-learn):
+
+```bash
+python3 scripts/run_real_routing_model_eval.py
+```
+
+See `docs/REAL_GSM8K_ROUTING_STUDY.md` and `docs/REAL_ROUTING_MODEL_RESULTS.md`.
+
 ## Tests & Linting
 
 ```bash

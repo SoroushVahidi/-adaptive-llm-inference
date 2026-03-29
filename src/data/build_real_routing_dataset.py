@@ -1,271 +1,410 @@
-"""Build a real query-level GSM8K routing dataset from live strategy outputs."""
+"""Build real GSM8K routing rows: reasoning_greedy vs direct_plus_revise + features.
+
+Checkpoints after each query (JSONL append + CSV rewrite) for partial progress.
+"""
 
 from __future__ import annotations
 
 import csv
 import json
 import os
+import traceback
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-from src.datasets.gsm8k import load_gsm8k
+from src.datasets.gsm8k import Query, load_gsm8k
 from src.evaluation.oracle_subset_eval import run_reasoning_greedy
 from src.evaluation.strategy_expansion_eval import run_direct_plus_revise
 from src.features.calibration_features import extract_calibration_features
 from src.features.constraint_violation_features import extract_constraint_violation_features
-from src.features.number_role_features import (
-    compute_calibrated_role_decision,
-    compute_role_coverage_features,
-)
-from src.features.precompute_features import extract_query_features
-from src.features.selective_prediction_features import extract_selective_prediction_features
+from src.features.number_role_features import compute_calibrated_role_decision
+from src.features.precompute_features import extract_first_pass_features, extract_query_features
 from src.features.self_verification_features import extract_self_verification_features
 from src.features.step_verification_features import extract_step_verification_features
 from src.features.target_quantity_features import extract_target_quantity_features
 from src.features.unified_error_signal import compute_unified_error_signal
 from src.models.openai_llm import OpenAILLMModel
-from src.models.revise_helpful_classifier import detect_sklearn_support
+from src.policies.adaptive_policy_v6 import compute_v6_scores
+from src.policies.adaptive_policy_v7 import compute_v7_scores
+from src.utils.answer_extraction import extract_math_answer
 
 
-@dataclass(frozen=True)
-class BuildConfig:
-    gsm8k_data_file: str | Path = "data/gsm8k_uploaded_normalized.jsonl"
-    subset_size: int = 20
-    output_dir: str | Path = "outputs/real_routing_dataset"
-    output_dataset_csv: str | Path = "data/real_gsm8k_routing_dataset.csv"
-    model_name: str = "gpt-4o-mini"
-    max_tokens: int = 256
-    timeout: int = 60
-
-
-def _normalize(value: str) -> str:
-    candidate = value.strip().replace(",", "").replace("$", "").rstrip(".")
+def _norm_answer(value: str) -> str:
+    candidate = str(value).strip().replace(",", "").replace("$", "").rstrip(".")
     try:
         number = Decimal(candidate)
+        normalized = format(number.normalize(), "f")
+        if "." in normalized:
+            normalized = normalized.rstrip("0").rstrip(".")
+        return normalized or "0"
     except InvalidOperation:
-        return candidate
-    normalized = format(number.normalize(), "f")
-    if "." in normalized:
-        normalized = normalized.rstrip("0").rstrip(".")
-    return normalized or "0"
+        return candidate.casefold()
 
 
-def _compute_features(question: str, reasoning_text: str, predicted_answer: str) -> dict[str, Any]:
-    parsed_answer = predicted_answer.strip()
-    query_feats = extract_query_features(question)
-    target_feats = extract_target_quantity_features(question)
-    constraint_feats = extract_constraint_violation_features(
-        question_text=question,
-        reasoning_output=reasoning_text,
-        predicted_answer=parsed_answer,
-    )
-    role_feats = compute_role_coverage_features(
-        question_text=question,
-        reasoning_text=reasoning_text,
-        parsed_answer=parsed_answer,
-    )
-    calibrated = compute_calibrated_role_decision(
-        question_text=question,
-        reasoning_text=reasoning_text,
-        parsed_answer=parsed_answer,
-    )
-    self_verify = extract_self_verification_features(
-        question_text=question,
-        reasoning_text=reasoning_text,
-        parsed_answer=parsed_answer,
-    )
-    selective = extract_selective_prediction_features(
-        reasoning_text=reasoning_text,
-        parsed_answer=parsed_answer,
-    )
-    calibration = extract_calibration_features(
-        reasoning_text=reasoning_text,
-        parsed_answer=parsed_answer,
-    )
-    step = extract_step_verification_features(
-        question_text=question,
-        reasoning_text=reasoning_text,
-    )
-    unified = compute_unified_error_signal(
-        question_text=question,
-        reasoning_text=reasoning_text,
-        parsed_answer=parsed_answer,
-    )
-    calibration_bin = calibration["calibration_bin"]
-    calibrated_decision = calibrated["calibrated_decision"]
-    return {
-        **query_feats,
-        **target_feats,
-        **constraint_feats,
-        "role_coverage_score": role_feats["role_coverage_score"],
-        "missing_required_number_count": role_feats["missing_required_number_count"],
-        "missing_strong_required_number_count": role_feats["missing_strong_required_number_count"],
-        "possible_intermediate_stop_suspected": role_feats["possible_intermediate_stop_suspected"],
-        "required_subtractive_number_missing": role_feats["required_subtractive_number_missing"],
-        "required_rate_number_missing": role_feats["required_rate_number_missing"],
-        "required_capacity_number_missing": role_feats["required_capacity_number_missing"],
-        "role_warning_score": calibrated["role_warning_score"],
-        "role_strong_error_score": calibrated["role_strong_error_score"],
-        "calibrated_no_escalation": int(calibrated_decision == "no_escalation"),
-        "calibrated_maybe_escalate": int(calibrated_decision == "maybe_escalate"),
-        "calibrated_strong_escalation_candidate": int(
-            calibrated_decision == "strong_escalation_candidate"
-        ),
-        **self_verify,
-        **selective,
-        "predicted_answer_format_confidence": calibration["predicted_answer_format_confidence"],
-        "calibration_bin_high": int(calibration_bin == "high_confidence"),
-        "calibration_bin_medium": int(calibration_bin == "medium_confidence"),
-        "calibration_bin_low": int(calibration_bin == "low_confidence"),
-        **step,
-        "unified_error_score": unified["unified_error_score"],
-        "unified_confidence_score": unified["unified_confidence_score"],
-    }
+def _answers_match(gold: str, predicted: str) -> bool:
+    if not predicted or not str(predicted).strip():
+        return False
+    g, p = _norm_answer(gold), _norm_answer(predicted)
+    try:
+        Decimal(g)
+        Decimal(p)
+        return g == p
+    except InvalidOperation:
+        return g == p
 
 
-def _write_csv(path: Path, rows: list[dict[str, Any]], fieldnames: list[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+def _flatten_features(prefix: str, d: dict[str, Any], out: dict[str, float]) -> None:
+    for k, v in d.items():
+        key = f"{prefix}_{k}" if prefix else k
+        if isinstance(v, bool):
+            out[key] = 1.0 if v else 0.0
+        elif isinstance(v, (int, float)):
+            out[key] = float(v)
+        elif v is None:
+            out[key] = 0.0
+        elif isinstance(v, dict):
+            _flatten_features(key, v, out)
 
 
-def _environment_status(config: BuildConfig) -> dict[str, Any]:
-    dataset_path = Path(config.gsm8k_data_file)
-    api_key_present = bool(os.getenv("OPENAI_API_KEY"))
-    sklearn_support = detect_sklearn_support()
-    return {
-        "openai_api_key_present": api_key_present,
-        "model_access_working": False,
-        "sklearn_available": sklearn_support.available,
-        "sklearn_reason": sklearn_support.reason,
-        "gsm8k_file_readable": dataset_path.exists() and dataset_path.is_file(),
-    }
+def _numeric_feature_row(
+    question: str,
+    reasoning_raw: str,
+    parsed_reasoning: str,
+) -> dict[str, float]:
+    out: dict[str, float] = {}
+    _flatten_features("q", extract_query_features(question), out)
+    _flatten_features("tq", extract_target_quantity_features(question), out)
+    cons = extract_constraint_violation_features(
+        question, reasoning_raw, predicted_answer=parsed_reasoning or None
+    )
+    for k, v in cons.items():
+        if k.endswith("_suspected") and isinstance(v, bool):
+            out[f"cons_{k}"] = 1.0 if v else 0.0
+    role = compute_calibrated_role_decision(question, reasoning_raw, parsed_answer=parsed_reasoning)
+    out["role_warning_score"] = float(role["role_warning_score"])
+    out["role_strong_error_score"] = float(role["role_strong_error_score"])
+    out["calibrated_strong_escalation_candidate"] = (
+        1.0 if role["calibrated_decision"] == "strong_escalation_candidate" else 0.0
+    )
+    self_v = extract_self_verification_features(
+        question, reasoning_raw, parsed_answer=parsed_reasoning
+    )
+    for k, v in self_v.items():
+        if isinstance(v, (int, float)):
+            out[f"self_{k}"] = float(v)
+        elif isinstance(v, bool):
+            out[f"self_{k}"] = 1.0 if v else 0.0
+    cal = extract_calibration_features(reasoning_raw, parsed_answer=parsed_reasoning)
+    for k, v in cal.items():
+        if isinstance(v, (int, float)):
+            out[f"cal_{k}"] = float(v)
+    step = extract_step_verification_features(question, reasoning_raw)
+    for k, v in step.items():
+        if isinstance(v, (int, float)):
+            out[f"step_{k}"] = float(v)
+    fp = extract_first_pass_features(question, reasoning_raw, parsed_answer=parsed_reasoning)
+    for k, v in fp.items():
+        if isinstance(v, bool):
+            out[f"fp_{k}"] = 1.0 if v else 0.0
+        elif isinstance(v, (int, float)):
+            out[f"fp_{k}"] = float(v)
+    uni = compute_unified_error_signal(question, reasoning_raw, parsed_answer=parsed_reasoning)
+    out["unified_error_score"] = float(uni["unified_error_score"])
+    out["unified_confidence_score"] = float(uni["unified_confidence_score"])
+    v6 = compute_v6_scores(question, reasoning_raw)
+    out["v6_answer_error_score"] = float(v6["answer_error_score"])
+    out["v6_explanation_warning_score"] = float(v6["explanation_warning_score"])
+    out["v6_final_answer_confident"] = 1.0 if v6["final_answer_confident"] else 0.0
+    out["v6_revise_recommended"] = 1.0 if v6["revise_recommended"] else 0.0
+    v7 = compute_v7_scores(question, reasoning_raw)
+    out["v7_answer_error_score"] = float(v7["answer_error_score"])
+    out["v7_extra_answer_error"] = float(v7["v7_extra_answer_error"])
+    out["v7_final_answer_confident"] = 1.0 if v7["final_answer_confident"] else 0.0
+    out["v7_revise_recommended"] = 1.0 if v7["revise_recommended"] else 0.0
+    return out
+
+
+@dataclass
+class BuildConfig:
+    gsm8k_data_file: str | Path | None
+    subset_size: int
+    output_dir: str | Path
+    output_dataset_csv: str | Path
+    model_name: str = "gpt-4o-mini"
+    max_tokens: int = 512
+    timeout: int = 90
+    checkpoint_every: int = 1
+    bundled_fallback: str | Path | None = None
 
 
 def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
     out_dir = Path(config.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    dataset_csv = Path(config.output_dataset_csv)
+    dataset_csv.parent.mkdir(parents=True, exist_ok=True)
+
     summary_path = out_dir / "gsm8k_subset_run_summary.json"
     per_query_csv = out_dir / "gsm8k_per_query_outputs.csv"
+    raw_jsonl = out_dir / "raw_responses.jsonl"
+    provider_meta = out_dir / "provider_metadata.json"
+    checkpoint_path = out_dir / "checkpoint.json"
 
-    env = _environment_status(config)
     blockers: list[str] = []
-    if not env["gsm8k_file_readable"]:
-        blockers.append(f"Missing GSM8K normalized file: {config.gsm8k_data_file}")
-    if not env["openai_api_key_present"]:
-        blockers.append("OPENAI_API_KEY is not set; real inference blocked.")
+    if not os.getenv("OPENAI_API_KEY", "").strip():
+        blockers.append("OPENAI_API_KEY missing")
+
+    meta = {
+        "provider": "openai",
+        "model_name": config.model_name,
+        "max_tokens": config.max_tokens,
+        "timeout_seconds": config.timeout,
+        "subset_size_requested": config.subset_size,
+        "gsm8k_data_file": str(config.gsm8k_data_file) if config.gsm8k_data_file else None,
+    }
+    provider_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
     if blockers:
         summary = {
             "run_status": "BLOCKED",
             "evidence_status": "blocked",
-            "subset_size_requested": config.subset_size,
-            "subset_size_executed": 0,
             "blockers": blockers,
-            "environment": env,
-            "output_dataset_csv": str(config.output_dataset_csv),
-            "per_query_csv": str(per_query_csv),
         }
-        summary_path.write_text(json.dumps(summary, indent=2))
+        summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return {
             "summary": summary,
             "summary_path": str(summary_path),
             "per_query_csv": str(per_query_csv),
-            "dataset_csv": str(config.output_dataset_csv),
+            "dataset_csv": str(dataset_csv),
         }
 
-    model = OpenAILLMModel(
-        model_name=config.model_name,
-        max_tokens=config.max_tokens,
-        timeout=config.timeout,
+    reasoning_prefix = (
+        "Solve this step by step and end with 'Final answer: <number>'.\n\n"
+    )
+    revise_model_prefix = (
+        "Answer the following math question. Give only the final numeric answer."
     )
 
+    queries: list[Query] = []
+    data_source = config.data_source_note or "unknown"
+    bundled = Path(
+        config.bundled_fallback
+        or (
+            Path(__file__).resolve().parent.parent
+            / "datasets"
+            / "bundled"
+            / "gsm8k_test_sample.json"
+        )
+    )
     try:
-        _ = model.generate("Return just the number 4.")
-        env["model_access_working"] = True
-    except Exception as exc:  # pragma: no cover - network-dependent
-        blockers.append(f"Model access check failed: {exc}")
-
-    if blockers:
+        if config.gsm8k_data_file and Path(config.gsm8k_data_file).exists():
+            queries = load_gsm8k(
+                split="test",
+                max_samples=config.subset_size,
+                data_file=config.gsm8k_data_file,
+            )
+            data_source = "local_json_file"
+        elif bundled.exists():
+            bundled_queries = load_gsm8k(
+                split="test",
+                max_samples=config.subset_size,
+                data_file=str(bundled),
+            )
+            if len(bundled_queries) >= config.subset_size:
+                queries = bundled_queries[: config.subset_size]
+                data_source = "bundled_gsm8k_test_sample"
+            else:
+                queries = load_gsm8k(
+                    split="test",
+                    max_samples=config.subset_size,
+                    cache_dir="data",
+                )
+                data_source = "huggingface_openai_gsm8k_test"
+        else:
+            queries = load_gsm8k(
+                split="test",
+                max_samples=config.subset_size,
+                cache_dir="data",
+            )
+            data_source = "huggingface_openai_gsm8k_test"
+    except Exception as exc:
         summary = {
             "run_status": "BLOCKED",
             "evidence_status": "blocked",
-            "subset_size_requested": config.subset_size,
-            "subset_size_executed": 0,
-            "blockers": blockers,
-            "environment": env,
-            "output_dataset_csv": str(config.output_dataset_csv),
-            "per_query_csv": str(per_query_csv),
+            "blockers": [f"load_gsm8k failed: {exc}"],
         }
-        summary_path.write_text(json.dumps(summary, indent=2))
+        summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return {
             "summary": summary,
             "summary_path": str(summary_path),
             "per_query_csv": str(per_query_csv),
-            "dataset_csv": str(config.output_dataset_csv),
+            "dataset_csv": str(dataset_csv),
         }
 
-    queries = load_gsm8k(data_file=config.gsm8k_data_file, max_samples=config.subset_size)
-    rows: list[dict[str, Any]] = []
+    n = min(len(queries), config.subset_size)
+    queries = queries[:n]
 
-    for query in queries:
-        reasoning_result = run_reasoning_greedy(model, query.question)
-        revise_result = run_direct_plus_revise(model, query.question)
+    model_r = OpenAILLMModel(
+        model_name=config.model_name,
+        greedy_temperature=0.0,
+        sample_temperature=0.0,
+        max_tokens=config.max_tokens,
+        timeout_seconds=float(config.timeout),
+        prompt_prefix=reasoning_prefix,
+    )
+    model_rev = OpenAILLMModel(
+        model_name=config.model_name,
+        greedy_temperature=0.0,
+        sample_temperature=0.0,
+        max_tokens=config.max_tokens,
+        timeout_seconds=float(config.timeout),
+        prompt_prefix=revise_model_prefix,
+    )
 
-        gold = _normalize(query.answer)
-        reasoning_answer = _normalize(str(reasoning_result["predicted_answer"]))
-        revise_answer = _normalize(str(revise_result["predicted_answer"]))
-        reasoning_correct = int(reasoning_answer == gold)
-        revise_correct = int(revise_answer == gold)
-        revise_helpful = int(reasoning_correct == 0 and revise_correct == 1)
+    start_idx = 0
+    completed: list[dict[str, Any]] = []
+    if checkpoint_path.exists():
+        try:
+            ck = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            start_idx = int(ck.get("next_index", 0))
+            if raw_jsonl.exists() and start_idx > 0:
+                for line in raw_jsonl.read_text(encoding="utf-8").splitlines():
+                    if line.strip():
+                        completed.append(json.loads(line))
+        except (json.JSONDecodeError, ValueError, OSError):
+            start_idx = 0
+            completed = []
 
-        reasoning_text = "\n".join(str(x) for x in reasoning_result.get("raw_outputs", []))
-        if not reasoning_text.strip():
-            reasoning_text = f"Final answer: {reasoning_answer}"
+    _CSV_SKIP_FULL = frozenset({"revise_raw_json", "error_trace"})
+    _REASONING_CSV_MAX = 12000
 
-        rows.append(
-            {
-                "question_id": query.id,
-                "question": query.question,
-                "gold_answer": gold,
-                "reasoning_answer": reasoning_answer,
-                "revise_answer": revise_answer,
-                "reasoning_correct": reasoning_correct,
-                "revise_correct": revise_correct,
-                "revise_helpful": revise_helpful,
-                "reasoning_cost": 1,
-                "revise_cost": 2,
-                **_compute_features(query.question, reasoning_text, reasoning_answer),
+    def _rewrite_outputs() -> None:
+        if not completed:
+            return
+        fieldnames = [k for k in completed[0] if k not in _CSV_SKIP_FULL]
+        with per_query_csv.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=fieldnames, extrasaction="ignore")
+            w.writeheader()
+            for row in completed:
+                out_row = {k: row.get(k, "") for k in fieldnames}
+                rr = str(out_row.get("reasoning_raw", ""))
+                if len(rr) > _REASONING_CSV_MAX:
+                    out_row["reasoning_raw"] = rr[:_REASONING_CSV_MAX] + "\n...[truncated]"
+                w.writerow(out_row)
+
+        ds_rows: list[dict[str, Any]] = []
+        for row in completed:
+            if row.get("status") != "ok":
+                continue
+            base = {
+                k: row[k]
+                for k in row
+                if not k.startswith("feat_") and k not in _CSV_SKIP_FULL
             }
+            rr = str(base.get("reasoning_raw", ""))
+            if len(rr) > _REASONING_CSV_MAX:
+                base["reasoning_raw"] = rr[:_REASONING_CSV_MAX] + "\n...[truncated]"
+            for k, v in row.items():
+                if k.startswith("feat_"):
+                    base[k[5:]] = v
+            ds_rows.append(base)
+        if ds_rows:
+            df_names = list(ds_rows[0].keys())
+            with dataset_csv.open("w", newline="", encoding="utf-8") as fh:
+                w = csv.DictWriter(fh, fieldnames=df_names, extrasaction="ignore")
+                w.writeheader()
+                w.writerows(ds_rows)
+
+    for i in range(start_idx, len(queries)):
+        q = queries[i]
+        row: dict[str, Any] = {
+            "question_id": q.id,
+            "question": q.question,
+            "gold_answer": q.answer,
+            "status": "pending",
+        }
+        try:
+            rg = run_reasoning_greedy(model_r, q.question)
+            reasoning_raw = str(rg["raw_outputs"][0])
+            reasoning_ans = str(rg.get("predicted_answer", ""))
+            parsed_r = extract_math_answer(reasoning_raw).strip() or reasoning_ans
+
+            dr = run_direct_plus_revise(model_rev, q.question)
+            revise_raw = dr["raw_outputs"]
+            revise_ans = str(dr.get("predicted_answer", ""))
+
+            r_ok = _answers_match(q.answer, reasoning_ans)
+            v_ok = _answers_match(q.answer, revise_ans)
+            helpful = 1 if (not r_ok and v_ok) else 0
+
+            feat = _numeric_feature_row(q.question, reasoning_raw, parsed_r)
+            for fk, fv in feat.items():
+                row[f"feat_{fk}"] = fv
+
+            row.update(
+                {
+                    "status": "ok",
+                    "reasoning_raw": reasoning_raw,
+                    "revise_raw_json": json.dumps(revise_raw, ensure_ascii=False),
+                    "reasoning_answer": reasoning_ans,
+                    "revise_answer": revise_ans,
+                    "reasoning_correct": int(r_ok),
+                    "revise_correct": int(v_ok),
+                    "revise_helpful": helpful,
+                    "reasoning_cost": 1,
+                    "revise_cost": 2,
+                    "reasoning_raw_chars": len(reasoning_raw),
+                    "revise_num_calls": len(revise_raw),
+                }
+            )
+        except Exception as exc:
+            row["status"] = "error"
+            row["error_message"] = str(exc)
+            row["error_trace"] = traceback.format_exc()[-2000:]
+
+        completed.append(row)
+        with raw_jsonl.open("a", encoding="utf-8") as jf:
+            jf.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+        _rewrite_outputs()
+        checkpoint_path.write_text(
+            json.dumps({"next_index": i + 1, "total": len(queries)}, indent=2),
+            encoding="utf-8",
         )
 
-    fieldnames = list(rows[0].keys()) if rows else []
-    if rows:
-        _write_csv(per_query_csv, rows, fieldnames)
-        _write_csv(Path(config.output_dataset_csv), rows, fieldnames)
+    ok_rows = [r for r in completed if r.get("status") == "ok"]
+    err_rows = [r for r in completed if r.get("status") == "error"]
+    helpful_count = sum(int(r.get("revise_helpful", 0)) for r in ok_rows)
 
-    positives = sum(int(r["revise_helpful"]) for r in rows)
     summary = {
-        "run_status": "OK",
+        "run_status": "COMPLETED" if len(ok_rows) == len(queries) else "PARTIAL",
         "evidence_status": "measured_now",
-        "subset_size_requested": config.subset_size,
-        "subset_size_executed": len(rows),
-        "revise_helpful_positives": positives,
-        "revise_helpful_rate": (positives / len(rows)) if rows else 0.0,
-        "strongest_cheap_baseline": "reasoning_greedy",
-        "strongest_corrective_baseline": "direct_plus_revise",
-        "environment": env,
-        "output_dataset_csv": str(config.output_dataset_csv),
-        "per_query_csv": str(per_query_csv),
+        "provider": "openai",
+        "model_name": config.model_name,
+        "data_source": data_source,
+        "num_queries_requested": len(queries),
+        "num_queries_ok": len(ok_rows),
+        "num_queries_error": len(err_rows),
+        "revise_helpful_count": helpful_count,
+        "revise_helpful_rate": helpful_count / max(1, len(ok_rows)),
+        "reasoning_accuracy": sum(int(r["reasoning_correct"]) for r in ok_rows)
+        / max(1, len(ok_rows)),
+        "revise_accuracy": sum(int(r["revise_correct"]) for r in ok_rows)
+        / max(1, len(ok_rows)),
+        "paths": {
+            "summary_json": str(summary_path),
+            "per_query_csv": str(per_query_csv),
+            "dataset_csv": str(dataset_csv),
+            "raw_jsonl": str(raw_jsonl),
+            "provider_metadata": str(provider_meta),
+        },
     }
-    summary_path.write_text(json.dumps(summary, indent=2))
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
     return {
         "summary": summary,
         "summary_path": str(summary_path),
         "per_query_csv": str(per_query_csv),
-        "dataset_csv": str(config.output_dataset_csv),
+        "dataset_csv": str(dataset_csv),
     }
