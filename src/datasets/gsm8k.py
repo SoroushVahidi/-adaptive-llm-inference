@@ -50,19 +50,27 @@ def _load_from_file(
     ``"question"`` and ``"answer"`` fields.  An optional ``"id"`` field is
     used when present; otherwise IDs are generated from the split and index.
     """
-    records = json.loads(Path(data_file).read_text())
-    if not isinstance(records, list):
-        raise ValueError(f"Local data file {data_file} must contain a JSON array.")
+    if str(data_file).endswith(".jsonl"):
+        records = []
+        with Path(data_file).open() as handle:
+            for line in handle:
+                if line.strip():
+                    records.append(json.loads(line))
+    else:
+        payload = Path(data_file).read_text()
+        records = json.loads(payload)
+        if not isinstance(records, list):
+            raise ValueError(f"Local data file {data_file} must contain a JSON array.")
     queries: list[Query] = []
     for idx, rec in enumerate(records):
         if max_samples is not None and idx >= max_samples:
             break
-        qid = str(rec.get("id", f"gsm8k_{split}_{idx}"))
+        qid = str(rec.get("question_id") or rec.get("id") or f"gsm8k_{split}_{idx}")
         queries.append(
             Query(
                 id=qid,
                 question=str(rec["question"]),
-                answer=_extract_answer(str(rec["answer"])),
+                answer=_extract_answer(str(rec.get("gold_answer") or rec.get("answer") or "")),
             )
         )
     return queries

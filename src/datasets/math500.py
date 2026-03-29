@@ -43,9 +43,17 @@ def _load_from_file(
     split: str,
     max_samples: Optional[int],
 ) -> list[Query]:
-    records = json.loads(Path(data_file).read_text())
-    if not isinstance(records, list):
-        raise ValueError(f"Local data file {data_file} must contain a JSON array.")
+    if str(data_file).endswith(".jsonl"):
+        records = []
+        with Path(data_file).open() as handle:
+            for line in handle:
+                if line.strip():
+                    records.append(json.loads(line))
+    else:
+        payload = Path(data_file).read_text()
+        records = json.loads(payload)
+        if not isinstance(records, list):
+            raise ValueError(f"Local data file {data_file} must contain a JSON array.")
 
     queries: list[Query] = []
     for idx, record in enumerate(records):
