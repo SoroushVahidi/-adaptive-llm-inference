@@ -319,6 +319,17 @@ python3 scripts/run_real_routing_model_eval.py
 
 See `docs/REAL_GSM8K_ROUTING_STUDY.md` and `docs/REAL_ROUTING_MODEL_RESULTS.md`.
 
+Hard-regime follow-up (MATH500 + mined hard GSM8K):
+
+```bash
+python3 scripts/run_select_hard_gsm8k.py --subset-size 100
+python3 scripts/run_build_math500_routing_dataset.py --subset-size 100
+python3 scripts/run_build_hard_gsm8k_routing_dataset.py
+python3 scripts/run_cross_regime_comparison.py
+```
+
+See `docs/HARD_REGIME_ROUTING_STUDY.md`.
+
 ## Tests & Linting
 
 ```bash
