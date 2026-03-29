@@ -31,6 +31,12 @@ def main() -> None:
     p.add_argument("--model-name", default="gpt-4o-mini")
     p.add_argument("--max-tokens", type=int, default=512)
     p.add_argument("--timeout", type=int, default=90)
+    p.add_argument(
+        "--max-queries",
+        type=int,
+        default=None,
+        help="Cap number of rows from selection CSV (default: all)",
+    )
     args = p.parse_args()
 
     sel = Path(args.selection_csv)
@@ -48,6 +54,8 @@ def main() -> None:
                     answer=str(row["gold_answer"]),
                 )
             )
+    if args.max_queries is not None:
+        queries = queries[: args.max_queries]
 
     result = build_real_routing_dataset(
         BuildConfig(

@@ -29,6 +29,12 @@ def main() -> None:
     )
     p.add_argument("--gsm8k-data-file", default="")
     p.add_argument("--output-dir", default="outputs/hard_regime_selection")
+    p.add_argument(
+        "--rank-offset",
+        type=int,
+        default=0,
+        help="Skip this many highest-hardness rows before taking subset_size",
+    )
     args = p.parse_args()
     data_file = args.gsm8k_data_file or None
     if data_file and not Path(data_file).exists():
@@ -37,6 +43,7 @@ def main() -> None:
     _queries, rows, summary = select_hard_gsm8k_queries(
         pool_size=args.pool_size,
         subset_size=args.subset_size,
+        rank_offset=args.rank_offset,
         gsm8k_data_file=data_file,
     )
     paths = write_hard_selection_artifacts(rows, summary, args.output_dir)

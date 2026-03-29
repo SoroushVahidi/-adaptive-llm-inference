@@ -17,7 +17,10 @@ from typing import Any, Literal
 
 from src.datasets.gsm8k import Query, load_gsm8k
 from src.datasets.math500 import load_math500
-from src.evaluation.strategy_expansion_eval import run_direct_plus_revise
+from src.evaluation.strategy_expansion_eval import (
+    run_direct_plus_revise,
+    run_reasoning_then_revise_review_only,
+)
 from src.features.calibration_features import extract_calibration_features
 from src.features.constraint_violation_features import extract_constraint_violation_features
 from src.features.number_role_features import compute_calibrated_role_decision
@@ -174,6 +177,7 @@ class BuildConfig:
     summary_filename: str = "gsm8k_subset_run_summary.json"
     per_query_csv_filename: str = "gsm8k_per_query_outputs.csv"
     regime_label: str = ""
+    include_reasoning_then_revise: bool = False
 
     def effective_match_mode(self) -> Literal["numeric", "math"]:
         if self.answer_match_mode is not None:
@@ -333,6 +337,23 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
         timeout_seconds=float(cfg.timeout),
         prompt_prefix=revise_model_prefix,
     )
+    rtr_prefix = (
+        "You verify step-by-step math reasoning. "
+        "Check the reasoning and final answer carefully. If incorrect, fix it. "
+        "If correct, return the same answer."
+    )
+    model_rtr = (
+        OpenAILLMModel(
+            model_name=cfg.model_name,
+            greedy_temperature=0.0,
+            sample_temperature=0.0,
+            max_tokens=cfg.max_tokens,
+            timeout_seconds=float(cfg.timeout),
+            prompt_prefix=rtr_prefix,
+        )
+        if cfg.include_reasoning_then_revise
+        else None
+    )
 
     start_idx = 0
     completed: list[dict[str, Any]] = []
@@ -348,7 +369,7 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
             start_idx = 0
             completed = []
 
-    _CSV_SKIP_FULL = frozenset({"revise_raw_json", "error_trace"})
+    _CSV_SKIP_FULL = frozenset({"revise_raw_json", "reasoning_then_revise_raw_json", "error_trace"})
     _REASONING_CSV_MAX = 12000
 
     def _rewrite_outputs() -> None:
@@ -409,26 +430,47 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
             v_ok = answers_match(q.answer, revise_ans)
             helpful = 1 if (not r_ok and v_ok) else 0
 
+            rtr_ans = ""
+            rtr_correct = 0
+            rtr_helpful = 0
+            rtr_raw_json = ""
+            if model_rtr is not None:
+                rtr = run_reasoning_then_revise_review_only(
+                    model_rtr,
+                    q.question,
+                    reasoning_raw,
+                    mode=match_mode,
+                )
+                rtr_ans = str(rtr.get("predicted_answer", ""))
+                rtr_raw_json = json.dumps(rtr["raw_outputs"], ensure_ascii=False)
+                rtr_correct = int(answers_match(q.answer, rtr_ans))
+                rtr_helpful = int((not r_ok) and bool(rtr_correct))
+
             feat = _numeric_feature_row(q.question, reasoning_raw, parsed_r)
             for fk, fv in feat.items():
                 row[f"feat_{fk}"] = fv
 
-            row.update(
-                {
-                    "status": "ok",
-                    "reasoning_raw": reasoning_raw,
-                    "revise_raw_json": json.dumps(revise_raw, ensure_ascii=False),
-                    "reasoning_answer": reasoning_ans,
-                    "revise_answer": revise_ans,
-                    "reasoning_correct": int(r_ok),
-                    "revise_correct": int(v_ok),
-                    "revise_helpful": helpful,
-                    "reasoning_cost": 1,
-                    "revise_cost": 2,
-                    "reasoning_raw_chars": len(reasoning_raw),
-                    "revise_num_calls": len(revise_raw),
-                }
-            )
+            upd: dict[str, Any] = {
+                "status": "ok",
+                "reasoning_raw": reasoning_raw,
+                "revise_raw_json": json.dumps(revise_raw, ensure_ascii=False),
+                "reasoning_answer": reasoning_ans,
+                "revise_answer": revise_ans,
+                "reasoning_correct": int(r_ok),
+                "revise_correct": int(v_ok),
+                "revise_helpful": helpful,
+                "reasoning_cost": 1,
+                "revise_cost": 2,
+                "reasoning_raw_chars": len(reasoning_raw),
+                "revise_num_calls": len(revise_raw),
+            }
+            if model_rtr is not None:
+                upd["reasoning_then_revise_answer"] = rtr_ans
+                upd["reasoning_then_revise_correct"] = rtr_correct
+                upd["reasoning_then_revise_helpful"] = rtr_helpful
+                upd["reasoning_then_revise_raw_json"] = rtr_raw_json
+                upd["reasoning_then_revise_cost"] = 2
+            row.update(upd)
         except Exception as exc:
             row["status"] = "error"
             row["error_message"] = str(exc)
@@ -447,6 +489,14 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
     ok_rows = [r for r in completed if r.get("status") == "ok"]
     err_rows = [r for r in completed if r.get("status") == "error"]
     helpful_count = sum(int(r.get("revise_helpful", 0)) for r in ok_rows)
+    rtr_acc = None
+    rtr_helpful_rate = None
+    if cfg.include_reasoning_then_revise and ok_rows:
+        rtr_acc = sum(int(r.get("reasoning_then_revise_correct", 0)) for r in ok_rows) / len(
+            ok_rows
+        )
+        rtr_h = sum(int(r.get("reasoning_then_revise_helpful", 0)) for r in ok_rows)
+        rtr_helpful_rate = rtr_h / len(ok_rows)
 
     summary = {
         "run_status": "COMPLETED" if len(ok_rows) == len(queries) else "PARTIAL",
@@ -466,6 +516,9 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
         / max(1, len(ok_rows)),
         "revise_accuracy": sum(int(r["revise_correct"]) for r in ok_rows)
         / max(1, len(ok_rows)),
+        "reasoning_then_revise_accuracy": rtr_acc,
+        "reasoning_then_revise_helpful_rate": rtr_helpful_rate,
+        "include_reasoning_then_revise": cfg.include_reasoning_then_revise,
         "paths": {
             "summary_json": str(summary_path),
             "per_query_csv": str(per_query_csv),

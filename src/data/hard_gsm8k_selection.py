@@ -27,6 +27,7 @@ def select_hard_gsm8k_queries(
     *,
     pool_size: int | None = None,
     subset_size: int = 100,
+    rank_offset: int = 0,
     gsm8k_data_file: str | Path | None = None,
     cache_dir: str = "data",
     seed: int = 42,
@@ -94,8 +95,10 @@ def select_hard_gsm8k_queries(
         )
 
     scored.sort(key=lambda x: x["hardness_score"], reverse=True)
-    k = min(subset_size, len(scored))
-    top = scored[:k]
+    start = max(0, int(rank_offset))
+    end = min(len(scored), start + subset_size)
+    top = scored[start:end]
+    k = len(top)
     id_order = [s["question_id"] for s in top]
     q_by_id = {q.id: q for q in queries}
     selected_ordered = [q_by_id[i] for i in id_order if i in q_by_id]
@@ -108,6 +111,7 @@ def select_hard_gsm8k_queries(
         ),
         "pool_size": len(queries),
         "subset_size": k,
+        "rank_offset": start,
         "data_source": source,
         "seed": seed,
         "population_mean_chars": mu_c,

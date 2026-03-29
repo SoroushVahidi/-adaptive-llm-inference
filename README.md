@@ -330,6 +330,10 @@ python3 scripts/run_cross_regime_comparison.py
 
 See `docs/HARD_REGIME_ROUTING_STUDY.md`.
 
+Next-stage EAAI experiments (oracle routing, budget sweep, `reasoning_then_revise`, baselines, AIME):
+
+See `docs/NEXT_STAGE_EXPERIMENT_RESULTS.md` and scripts `run_reasoning_then_revise_addon.py`, `run_next_stage_postprocess.py`, `run_next_stage_baselines.py`, `run_build_aime_routing_dataset.py`, `run_final_cross_regime_summary.py`.
+
 ## Tests & Linting
 
 ```bash
