@@ -87,3 +87,9 @@ Optional: `--model gpt-4o-mini --max-tokens 512 --output-dir results/real_v6_fal
 - **Tiny N (7):** not a rate estimate.  
 - **Bundled JSON only** (no full GSM8K download).  
 - **Correctness** uses V6’s parsed final (`extract_math_answer` / numeric path); oracle row’s `extract_numeric_answer` may differ slightly on edge outputs (both stored in JSONL for inspection).
+
+---
+
+## V7 rescoring (same raw outputs)
+
+The committed snapshot `src/datasets/bundled/real_v6_false_negative_probe_snapshot.jsonl` stores the same **raw_model_output** strings. Running **`compute_v7_scores`** on that snapshot **revises** both V6-missed wrong cases (Tobias, Jasmine). See `outputs/adaptive_policy_v7/false_negative_probe.csv` and `docs/ADAPTIVE_POLICY_V7.md`. **Evidence:** measured_now for offline rescoring; exploratory_only for generalization beyond this snapshot.

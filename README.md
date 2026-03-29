@@ -289,6 +289,14 @@ python3 scripts/run_adaptive_policy_v6_eval.py --config configs/adaptive_policy_
 Writes `summary.json`, `per_case_results.csv`, and `signal_summary.csv` under
 `outputs/adaptive_policy_v6/`. See `docs/ADAPTIVE_POLICY_V6.md`.
 
+For **offline** v5/v6/v7 comparison (false-positive fixtures, recall proxies, real probe snapshot):
+
+```bash
+python3 scripts/run_adaptive_policy_v7_eval.py
+```
+
+Writes under `outputs/adaptive_policy_v7/`. See `docs/ADAPTIVE_POLICY_V7.md`.
+
 ## Tests & Linting
 
 ```bash

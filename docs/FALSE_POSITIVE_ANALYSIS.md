@@ -263,6 +263,22 @@ This reinforces the **marginal-value / estimand** issue: signals measure **“do
 
 ---
 
+## Adaptive policy v7 recheck (2026-03-29)
+
+**Method:** Same five traces; **`choose_strategy` v7** with `AdaptivePolicyV7Config`. Offline eval: `python3 scripts/run_adaptive_policy_v7_eval.py`.
+
+| Case ID | V7 chosen strategy | V7 `answer_error_score` | V7 revise? |
+|---------|------------------|-------------------------|------------|
+| `gsm8k_test_8` | `reasoning_greedy` | 0 | no |
+| `gsm8k_test_11` | `reasoning_greedy` | 0 | no |
+| `gsm8k_test_18` | `reasoning_greedy` | 0 | no |
+| `gsm8k_test_0` | `reasoning_greedy` | 0 | no |
+| `gsm8k_test_13` | `reasoning_greedy` | 0 | no |
+
+**Interpretation:** V7 **preserves** the no-revise behavior on these concise **gold-correct** fixtures (`false_positive_v7_revise_count = 0` in `outputs/adaptive_policy_v7/summary.json`).
+
+---
+
 ## Reproduction
 
 ```bash

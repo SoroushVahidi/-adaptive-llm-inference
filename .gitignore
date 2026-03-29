@@ -7,7 +7,9 @@ build/
 .eggs/
 
 data/
-outputs/
+outputs/*
+!outputs/adaptive_policy_v7/
+!outputs/adaptive_policy_v7/**
 results/
 
 .venv/

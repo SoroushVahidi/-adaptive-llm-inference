@@ -1,0 +1,13 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "false_positive_fixtures": 5,
+  "false_positive_v6_revise_count": 0,
+  "false_positive_v7_revise_count": 0,
+  "recall_fixtures": 2,
+  "snapshot_probe_rows": 7,
+  "snapshot_path": "/workspace/src/datasets/bundled/real_v6_false_negative_probe_snapshot.jsonl",
+  "snapshot_wrong_count": 2,
+  "snapshot_wrong_v6_no_revise": 2,
+  "snapshot_wrong_v7_no_revise": 0
+}

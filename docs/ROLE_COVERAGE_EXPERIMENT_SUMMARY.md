@@ -19,6 +19,10 @@ Role coverage marks many question literals as **required** in the reasoning text
 
 **Adaptive policy v6** (`src/policies/adaptive_policy_v6.py`) feeds missing-number and `possible_intermediate_stop` into **`explanation_warning_score` only**. **Revise** is driven by **`answer_error_score`** (constraints + parsed-answer consistency checks) unless a **three-way combo** fires: high explanation pressure **and** low **`final_answer_confident`** **and** at least moderate answer error. See `docs/ADAPTIVE_POLICY_V6.md`.
 
+## V7 follow-up
+
+**Adaptive policy v7** (`src/policies/adaptive_policy_v7.py`) keeps V6’s explanation/answer split and adds **template** signals (e.g. weekday question + numeric final; “how much more” + answer equals first list price) plus **low-confidence escalation** for categorical failures. See `docs/ADAPTIVE_POLICY_V7.md` and `outputs/adaptive_policy_v7/summary.json`.
+
 ## Evidence labels
 
 - Synthetic progression: **measured_now**
