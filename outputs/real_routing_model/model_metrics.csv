@@ -1,0 +1,4 @@
+model,accuracy,precision,recall,f1,false_positive_rate
+decision_tree,0.95,0.0,0.0,0.0,0.030612244897959183
+bagging_trees,0.96,0.0,0.0,0.0,0.02040816326530612
+boosting_shallow_trees,0.96,0.0,0.0,0.0,0.02040816326530612
