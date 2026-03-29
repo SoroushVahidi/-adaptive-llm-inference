@@ -38,6 +38,8 @@ from src.evaluation.strategy_expansion_eval import (
     run_direct_plus_revise,
     run_direct_plus_verify,
     run_reasoning_best_of_3,
+    run_reasoning_then_revise,
+    run_self_consistency_3,
     run_structured_sampling_3,
 )
 from src.models.openai_llm import OpenAILLMModel
@@ -76,6 +78,8 @@ STRATEGY_COST_PROXY: dict[str, int] = {
     "structured_sampling_3": 3,   # 3 sequential prompts
     "direct_plus_verify": 2,      # direct + verify
     "direct_plus_revise": 2,      # direct + revise
+    "reasoning_then_revise": 2,   # reasoning + revise
+    "self_consistency_3": 3,      # 3 reasoning samples + vote
     "direct_plus_critique_plus_final": 3,  # direct + critique + final
     "first_pass_then_hint_guided_reason": 2,  # first pass + hint-guided
     "strong_direct": 1,           # 1 call on the strong model
@@ -89,6 +93,8 @@ _ORACLE_RUNNERS: dict[str, Any] = {
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
     "direct_plus_revise": run_direct_plus_revise,
+    "reasoning_then_revise": run_reasoning_then_revise,
+    "self_consistency_3": run_self_consistency_3,
     "direct_plus_critique_plus_final": run_direct_plus_critique_plus_final,
     "first_pass_then_hint_guided_reason": run_first_pass_then_hint_guided_reason,
     # strong_direct uses the same runner as direct_greedy but with a different
@@ -104,6 +110,14 @@ CORE_ORACLE_STRATEGIES: list[str] = [
     "direct_plus_revise",
     "direct_plus_critique_plus_final",
     "first_pass_then_hint_guided_reason",
+]
+
+# Multi-action supervised routing (narrow action set for learned controllers).
+MULTI_ACTION_ORACLE_STRATEGIES: list[str] = [
+    "reasoning_greedy",
+    "direct_plus_revise",
+    "reasoning_then_revise",
+    "self_consistency_3",
 ]
 
 
@@ -149,6 +163,14 @@ STRATEGY_DEFINITIONS = {
     ),
     "direct_plus_verify": StrategyDefinition("direct_plus_verify", run_direct_plus_verify),
     "direct_plus_revise": StrategyDefinition("direct_plus_revise", run_direct_plus_revise),
+    "reasoning_then_revise": StrategyDefinition(
+        "reasoning_then_revise",
+        run_reasoning_then_revise,
+    ),
+    "self_consistency_3": StrategyDefinition(
+        "self_consistency_3",
+        run_self_consistency_3,
+    ),
     "direct_plus_critique_plus_final": StrategyDefinition(
         "direct_plus_critique_plus_final",
         run_direct_plus_critique_plus_final,
@@ -287,8 +309,14 @@ def run_oracle_subset_eval(
                 "samples_used": result["samples_used"],
                 "cost_proxy": result["samples_used"],
             }
-            # Carry optional multi-stage fields when present.
-            for key in ("first_answer", "revised_answer", "critique_text"):
+            # Carry optional multi-stage / diagnostic fields when present.
+            for key in (
+                "first_answer",
+                "revised_answer",
+                "critique_text",
+                "self_consistency_ambiguous",
+                "self_consistency_tied_values",
+            ):
                 if key in result:
                     row[key] = result[key]
             per_query_rows.append(row)

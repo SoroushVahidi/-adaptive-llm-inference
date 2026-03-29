@@ -74,9 +74,11 @@ def test_implemented_strategies_are_expected_subset():
         "reasoning_greedy",
         "reasoning_best_of_3",
         "self_consistency",
+        "self_consistency_3",
         "structured_sampling_3",
         "direct_plus_verify",
         "direct_plus_revise",
+        "reasoning_then_revise",
         "direct_plus_critique_plus_final",
         "first_pass_then_hint_guided_reason",
     }

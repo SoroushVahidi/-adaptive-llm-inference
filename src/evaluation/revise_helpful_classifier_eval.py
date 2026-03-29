@@ -244,6 +244,23 @@ def _write_csv(path: Path, rows: list[dict[str, Any]], fieldnames: list[str]) ->
         writer.writerows(rows)
 
 
+def _feature_cell_to_float(val: Any) -> float:
+    """Coerce routing-feature cells to floats; non-numeric strings → 0.0."""
+    if val is True or val == "True":
+        return 1.0
+    if val is False or val == "False":
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    s = str(val).strip()
+    if not s:
+        return 0.0
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+
 def _evaluate_with_sklearn(
     rows: list[dict[str, Any]],
     feature_columns: list[str],
@@ -254,7 +271,7 @@ def _evaluate_with_sklearn(
     from sklearn.preprocessing import StandardScaler
     from sklearn.tree import DecisionTreeClassifier
 
-    X = [[float(row.get(col, 0.0)) for col in feature_columns] for row in rows]
+    X = [[_feature_cell_to_float(row.get(col, 0.0)) for col in feature_columns] for row in rows]
     y = [int(row["revise_helpful"]) for row in rows]
 
     class_count = len(set(y))

@@ -33,6 +33,7 @@ available_components:
     - direct_then_verify
     - direct_then_double_check
     - direct_then_revise
+    - reasoning_then_revise
     - direct_then_critique_then_final
     # Hint-guided
     - first_pass_then_hint_guided_reason
@@ -158,6 +159,26 @@ curated_strategies:
     model_slot: cheap_model
     status: implemented
     rationale: Revision stage enables self-correction after first response.
+    expected_cost_tier: medium
+
+  - name: reasoning_then_revise
+    prompt_types: [reasoning, revise]
+    sample_count: 2
+    stage_structure: reasoning_then_revise
+    model_slot: cheap_model
+    status: implemented
+    rationale: >
+      Chain-of-thought pass followed by a revise step conditioned on the full
+      first reasoning trace (multi-action routing family).
+    expected_cost_tier: medium
+
+  - name: self_consistency_3
+    prompt_types: [reasoning]
+    sample_count: 3
+    stage_structure: parallel_vote
+    model_slot: cheap_model
+    status: implemented
+    rationale: Three-sample self-consistency / majority vote for bounded extra cost.
     expected_cost_tier: medium
 
   - name: direct_plus_critique_plus_final

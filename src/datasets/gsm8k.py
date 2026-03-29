@@ -81,6 +81,7 @@ def load_gsm8k(
     max_samples: Optional[int] = None,
     cache_dir: str = "data",
     data_file: Optional[str | Path] = None,
+    tail_max_samples: Optional[int] = None,
 ) -> list[Query]:
     """Load GSM8K and return a list of standardized Query objects.
 
@@ -90,19 +91,26 @@ def load_gsm8k(
         cache_dir: Local directory for the HuggingFace cache.
         data_file: Optional path to a local JSON file to use instead of
             downloading from HuggingFace.  Useful for offline environments.
+        tail_max_samples: If set, load the full split (or full local file) and
+            return only the last *tail_max_samples* queries (fixed ordering).
+            Ignores ``max_samples`` when used.  Intended as a cheap "hard tail"
+            proxy without a separate benchmark file.
 
     Returns:
         List of ``Query`` objects.
     """
     if data_file is not None:
-        return _load_from_file(data_file, split, max_samples)
+        all_queries = _load_from_file(data_file, split, max_samples=None)
+        if tail_max_samples is not None:
+            return all_queries[-tail_max_samples:]
+        if max_samples is not None:
+            return all_queries[:max_samples]
+        return all_queries
 
     ds = load_dataset("openai/gsm8k", "main", split=split, cache_dir=cache_dir)
 
     queries: list[Query] = []
     for idx, example in enumerate(ds):
-        if max_samples is not None and idx >= max_samples:
-            break
         queries.append(
             Query(
                 id=f"gsm8k_{split}_{idx}",
@@ -110,4 +118,8 @@ def load_gsm8k(
                 answer=_extract_answer(example["answer"]),
             )
         )
+    if tail_max_samples is not None:
+        return queries[-tail_max_samples:]
+    if max_samples is not None:
+        return queries[:max_samples]
     return queries

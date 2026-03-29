@@ -179,6 +179,78 @@ def run_direct_plus_verify(
     }
 
 
+# Shared reasoning-style prompt (matches ``run_reasoning_greedy`` in oracle_subset_eval).
+_REASONING_CHAIN_PROMPT = (
+    "Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
+)
+
+
+def run_reasoning_then_revise(
+    model: _ModelProtocol,
+    question: str,
+) -> dict[str, Any]:
+    """Run chain-of-thought once, then a revise pass on question + reasoning + answer."""
+    stage1_raw = model.generate(_REASONING_CHAIN_PROMPT.format(question=question))
+    first_answer = _normalize(extract_numeric_answer(stage1_raw))
+    reasoning_block = stage1_raw.strip()
+    max_ctx = 6000
+    if len(reasoning_block) > max_ctx:
+        reasoning_block = reasoning_block[:max_ctx] + "\n[...truncated...]"
+    revise_prompt = (
+        f"Question: {question}\n\n"
+        f"Your first reasoning and answer were:\n{reasoning_block}\n\n"
+        f"Your stated final answer was: {first_answer or '(none)'}\n\n"
+        "Review the reasoning carefully. If you find an error, correct it. "
+        "End your response with 'Final answer: <number>'. "
+        "If the answer is already correct, repeat it as 'Final answer: <number>'."
+    )
+    revise_raw = model.generate(revise_prompt)
+    revised_answer = _normalize(extract_numeric_answer(revise_raw))
+    if not revised_answer:
+        revised_answer = first_answer
+
+    return {
+        "raw_outputs": [stage1_raw, revise_raw],
+        "predicted_answer": revised_answer,
+        "samples_used": 2,
+        "first_answer": first_answer,
+        "revised_answer": revised_answer,
+    }
+
+
+def run_self_consistency_3(
+    model: _ModelProtocol,
+    question: str,
+) -> dict[str, Any]:
+    """Three independent reasoning samples; majority vote over normalized numeric answers."""
+    prompt = _REASONING_CHAIN_PROMPT.format(question=question)
+    raws = model.generate_n(prompt, 3)
+    answers = [_normalize(extract_numeric_answer(r)) for r in raws]
+    nonempty = [a for a in answers if a]
+    if not nonempty:
+        return {
+            "raw_outputs": raws,
+            "predicted_answer": "",
+            "samples_used": 3,
+            "self_consistency_ambiguous": True,
+            "self_consistency_tied_values": "",
+        }
+
+    counter: Counter[str] = Counter(nonempty)
+    top_freq = counter.most_common(1)[0][1]
+    tied = sorted([a for a, c in counter.items() if c == top_freq])
+    ambiguous = len(tied) > 1
+    final = tied[0]
+
+    return {
+        "raw_outputs": raws,
+        "predicted_answer": final,
+        "samples_used": 3,
+        "self_consistency_ambiguous": ambiguous,
+        "self_consistency_tied_values": "|".join(tied) if ambiguous else "",
+    }
+
+
 def run_direct_plus_revise(
     model: _ModelProtocol,
     question: str,
@@ -223,6 +295,8 @@ _STRATEGY_RUNNERS = {
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
     "direct_plus_revise": run_direct_plus_revise,
+    "reasoning_then_revise": run_reasoning_then_revise,
+    "self_consistency_3": run_self_consistency_3,
 }
 
 ALL_STRATEGIES = list(_STRATEGY_RUNNERS.keys())
