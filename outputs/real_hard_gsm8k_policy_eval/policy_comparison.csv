@@ -1,0 +1,6 @@
+route,accuracy,avg_cost,revise_rate
+reasoning_greedy,0.79,1.0,0.0
+direct_plus_revise,0.86,2.0,1.0
+adaptive_policy_v5,0.86,1.53,0.53
+adaptive_policy_v6,0.81,1.26,0.26
+adaptive_policy_v7,0.82,1.46,0.46

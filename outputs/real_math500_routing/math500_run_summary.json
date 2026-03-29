@@ -1,0 +1,24 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "dataset": "math500",
+  "answer_match_mode": "math",
+  "data_source": "huggingface_math500",
+  "regime_label": "math500",
+  "num_queries_requested": 100,
+  "num_queries_ok": 100,
+  "num_queries_error": 0,
+  "revise_helpful_count": 6,
+  "revise_helpful_rate": 0.06,
+  "reasoning_accuracy": 0.64,
+  "revise_accuracy": 0.64,
+  "paths": {
+    "summary_json": "outputs/real_math500_routing/math500_run_summary.json",
+    "per_query_csv": "outputs/real_math500_routing/per_query_outputs.csv",
+    "dataset_csv": "data/real_math500_routing_dataset.csv",
+    "raw_jsonl": "outputs/real_math500_routing/raw_responses.jsonl",
+    "provider_metadata": "outputs/real_math500_routing/provider_metadata.json"
+  }
+}
