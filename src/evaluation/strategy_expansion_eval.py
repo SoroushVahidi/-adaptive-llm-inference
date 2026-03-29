@@ -179,6 +179,48 @@ def run_direct_plus_verify(
     }
 
 
+def run_reasoning_greedy(
+    model: _ModelProtocol,
+    question: str,
+) -> dict[str, Any]:
+    """Single reasoning-style pass (chain-of-thought prompt), one sample."""
+    prompt = f"Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
+    raw = model.generate(prompt)
+    answer = _normalize(extract_numeric_answer(raw))
+    return {
+        "raw_outputs": [raw],
+        "predicted_answer": answer,
+        "samples_used": 1,
+    }
+
+
+def run_reasoning_then_revise(
+    model: _ModelProtocol,
+    question: str,
+) -> dict[str, Any]:
+    """Reasoning pass followed by a self-revision pass (two model calls)."""
+    prompt = f"Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
+    first_raw = model.generate(prompt)
+    first_answer = _normalize(extract_numeric_answer(first_raw))
+    revise_prompt = (
+        f"Question: {question}\n\n"
+        f"Your reasoning ended with: {first_answer}\n\n"
+        "Please review your work. If you spot an error, correct it. "
+        "End your response with 'Final answer: <number>'."
+    )
+    revised_raw = model.generate(revise_prompt)
+    revised_answer = _normalize(extract_numeric_answer(revised_raw))
+    if not revised_answer:
+        revised_answer = first_answer
+    return {
+        "raw_outputs": [first_raw, revised_raw],
+        "predicted_answer": revised_answer,
+        "samples_used": 2,
+        "first_answer": first_answer,
+        "revised_answer": revised_answer,
+    }
+
+
 def run_direct_plus_revise(
     model: _ModelProtocol,
     question: str,
@@ -219,7 +261,9 @@ def run_direct_plus_revise(
 
 _STRATEGY_RUNNERS = {
     "direct_greedy": run_direct_greedy,
+    "reasoning_greedy": run_reasoning_greedy,
     "reasoning_best_of_3": run_reasoning_best_of_3,
+    "reasoning_then_revise": run_reasoning_then_revise,
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
     "direct_plus_revise": run_direct_plus_revise,

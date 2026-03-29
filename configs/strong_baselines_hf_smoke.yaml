@@ -1,0 +1,12 @@
+# Small HuggingFace-backed run (downloads/cache via datasets library)
+model:
+  type: dummy
+  correct_prob: 0.35
+  seed: 7
+max_samples: 40
+cache_dir: data
+out_dir: outputs/baselines
+datasets:
+  - gsm8k
+  - hard_gsm8k
+  - math500

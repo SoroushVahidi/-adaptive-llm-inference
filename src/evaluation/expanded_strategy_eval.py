@@ -32,6 +32,8 @@ from src.evaluation.strategy_expansion_eval import (  # noqa: F401
     run_direct_greedy,
     run_direct_plus_revise,
     run_direct_plus_verify,
+    run_reasoning_greedy,
+    run_reasoning_then_revise,
     run_structured_sampling_3,
 )
 from src.utils.answer_extraction import extract_numeric_answer
@@ -196,6 +198,8 @@ def run_first_pass_then_hint_guided_reason(
 
 _EXPANDED_STRATEGY_RUNNERS = {
     "direct_greedy": run_direct_greedy,
+    "reasoning_greedy": run_reasoning_greedy,
+    "reasoning_then_revise": run_reasoning_then_revise,
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
     "direct_plus_revise": run_direct_plus_revise,
