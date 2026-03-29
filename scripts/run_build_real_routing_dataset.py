@@ -52,6 +52,8 @@ def main() -> None:
             timeout=args.timeout,
             checkpoint_every=args.checkpoint_every,
             bundled_fallback=args.bundled_fallback,
+            dataset="gsm8k",
+            regime_label="gsm8k_baseline",
         )
     )
     print(json.dumps(result["summary"], indent=2))

@@ -8,6 +8,8 @@ build/
 
 data/*
 !data/real_gsm8k_routing_dataset.csv
+!data/real_math500_routing_dataset.csv
+!data/real_hard_gsm8k_routing_dataset.csv
 outputs/*
 !outputs/adaptive_policy_v7/
 !outputs/adaptive_policy_v7/**
@@ -17,6 +19,22 @@ outputs/*
 !outputs/real_policy_eval/**
 !outputs/real_routing_model/
 !outputs/real_routing_model/**
+!outputs/hard_regime_selection/
+!outputs/hard_regime_selection/**
+!outputs/real_math500_routing/
+!outputs/real_math500_routing/**
+!outputs/real_math500_policy_eval/
+!outputs/real_math500_policy_eval/**
+!outputs/real_math500_routing_model/
+!outputs/real_math500_routing_model/**
+!outputs/real_hard_gsm8k_routing/
+!outputs/real_hard_gsm8k_routing/**
+!outputs/real_hard_gsm8k_policy_eval/
+!outputs/real_hard_gsm8k_policy_eval/**
+!outputs/real_hard_gsm8k_routing_model/
+!outputs/real_hard_gsm8k_routing_model/**
+!outputs/cross_regime_comparison/
+!outputs/cross_regime_comparison/**
 results/
 
 .venv/

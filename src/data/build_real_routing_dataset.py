@@ -1,6 +1,7 @@
-"""Build real GSM8K routing rows: reasoning_greedy vs direct_plus_revise + features.
+"""Build real routing rows: reasoning_greedy + direct_plus_revise + engineered features.
 
-Checkpoints after each query (JSONL append + CSV rewrite) for partial progress.
+Supports GSM8K, MATH500, or a caller-provided query list (e.g. hard subset).
+Checkpoints after each query (JSONL append + CSV rewrite).
 """
 
 from __future__ import annotations
@@ -12,10 +13,10 @@ import traceback
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from src.datasets.gsm8k import Query, load_gsm8k
-from src.evaluation.oracle_subset_eval import run_reasoning_greedy
+from src.datasets.math500 import load_math500
 from src.evaluation.strategy_expansion_eval import run_direct_plus_revise
 from src.features.calibration_features import extract_calibration_features
 from src.features.constraint_violation_features import extract_constraint_violation_features
@@ -28,10 +29,14 @@ from src.features.unified_error_signal import compute_unified_error_signal
 from src.models.openai_llm import OpenAILLMModel
 from src.policies.adaptive_policy_v6 import compute_v6_scores
 from src.policies.adaptive_policy_v7 import compute_v7_scores
-from src.utils.answer_extraction import extract_math_answer
+from src.utils.answer_extraction import (
+    extract_math_answer,
+    extract_numeric_answer,
+    normalize_math_answer,
+)
 
 
-def _norm_answer(value: str) -> str:
+def _norm_numeric(value: str) -> str:
     candidate = str(value).strip().replace(",", "").replace("$", "").rstrip(".")
     try:
         number = Decimal(candidate)
@@ -43,16 +48,39 @@ def _norm_answer(value: str) -> str:
         return candidate.casefold()
 
 
-def _answers_match(gold: str, predicted: str) -> bool:
+def _answers_match_numeric(gold: str, predicted: str) -> bool:
     if not predicted or not str(predicted).strip():
         return False
-    g, p = _norm_answer(gold), _norm_answer(predicted)
+    g, p = _norm_numeric(gold), _norm_numeric(predicted)
     try:
         Decimal(g)
         Decimal(p)
         return g == p
     except InvalidOperation:
         return g == p
+
+
+def _answers_match_math(gold: str, predicted: str) -> bool:
+    if not predicted or not str(predicted).strip():
+        return False
+    g = normalize_math_answer(gold)
+    p = normalize_math_answer(predicted)
+    return bool(g) and g == p
+
+
+def _predicted_from_reasoning_raw(raw: str, mode: Literal["numeric", "math"]) -> str:
+    if mode == "math":
+        parsed = extract_math_answer(raw).strip()
+        return normalize_math_answer(parsed) if parsed else ""
+    return _norm_numeric(extract_numeric_answer(raw))
+
+
+def _predicted_from_revise_outputs(raw_outputs: list[Any], mode: Literal["numeric", "math"]) -> str:
+    last = str(raw_outputs[-1]) if raw_outputs else ""
+    if mode == "math":
+        parsed = extract_math_answer(last).strip()
+        return normalize_math_answer(parsed) if parsed else ""
+    return _norm_numeric(extract_numeric_answer(last))
 
 
 def _flatten_features(prefix: str, d: dict[str, Any], out: dict[str, float]) -> None:
@@ -128,28 +156,47 @@ def _numeric_feature_row(
 
 @dataclass
 class BuildConfig:
-    gsm8k_data_file: str | Path | None
+    """Configuration for building a real routing dataset."""
+
     subset_size: int
     output_dir: str | Path
     output_dataset_csv: str | Path
+    gsm8k_data_file: str | Path | None = None
+    dataset: Literal["gsm8k", "math500", "custom"] = "gsm8k"
+    math500_data_file: str | Path | None = None
+    queries_override: list[Query] | None = None
+    answer_match_mode: Literal["numeric", "math"] | None = None
     model_name: str = "gpt-4o-mini"
     max_tokens: int = 512
     timeout: int = 90
     checkpoint_every: int = 1
     bundled_fallback: str | Path | None = None
+    summary_filename: str = "gsm8k_subset_run_summary.json"
+    per_query_csv_filename: str = "gsm8k_per_query_outputs.csv"
+    regime_label: str = ""
+
+    def effective_match_mode(self) -> Literal["numeric", "math"]:
+        if self.answer_match_mode is not None:
+            return self.answer_match_mode
+        return "math" if self.dataset == "math500" else "numeric"
 
 
 def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
-    out_dir = Path(config.output_dir)
+    cfg = config
+
+    out_dir = Path(cfg.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    dataset_csv = Path(config.output_dataset_csv)
+    dataset_csv = Path(cfg.output_dataset_csv)
     dataset_csv.parent.mkdir(parents=True, exist_ok=True)
 
-    summary_path = out_dir / "gsm8k_subset_run_summary.json"
-    per_query_csv = out_dir / "gsm8k_per_query_outputs.csv"
+    summary_path = out_dir / cfg.summary_filename
+    per_query_csv = out_dir / cfg.per_query_csv_filename
     raw_jsonl = out_dir / "raw_responses.jsonl"
     provider_meta = out_dir / "provider_metadata.json"
     checkpoint_path = out_dir / "checkpoint.json"
+
+    match_mode = cfg.effective_match_mode()
+    answers_match = _answers_match_math if match_mode == "math" else _answers_match_numeric
 
     blockers: list[str] = []
     if not os.getenv("OPENAI_API_KEY", "").strip():
@@ -157,11 +204,15 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
 
     meta = {
         "provider": "openai",
-        "model_name": config.model_name,
-        "max_tokens": config.max_tokens,
-        "timeout_seconds": config.timeout,
-        "subset_size_requested": config.subset_size,
-        "gsm8k_data_file": str(config.gsm8k_data_file) if config.gsm8k_data_file else None,
+        "model_name": cfg.model_name,
+        "max_tokens": cfg.max_tokens,
+        "timeout_seconds": cfg.timeout,
+        "subset_size_requested": cfg.subset_size,
+        "dataset": cfg.dataset,
+        "answer_match_mode": match_mode,
+        "regime_label": cfg.regime_label or "",
+        "gsm8k_data_file": str(cfg.gsm8k_data_file) if cfg.gsm8k_data_file else None,
+        "math500_data_file": str(cfg.math500_data_file) if cfg.math500_data_file else None,
     }
     provider_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
@@ -180,59 +231,80 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
         }
 
     reasoning_prefix = (
-        "Solve this step by step and end with 'Final answer: <number>'.\n\n"
+        "Solve this step by step. Put your final answer in \\boxed{...} "
+        "or end with 'Final answer: ...'.\n\n"
+        if match_mode == "math"
+        else "Solve this step by step and end with 'Final answer: <number>'.\n\n"
     )
     revise_model_prefix = (
-        "Answer the following math question. Give only the final numeric answer."
+        "Answer the following math question. Give only the final answer; "
+        "use \\boxed{...} when appropriate.\n\n"
+        if match_mode == "math"
+        else "Answer the following math question. Give only the final numeric answer."
     )
 
     queries: list[Query] = []
-    data_source = config.data_source_note or "unknown"
-    bundled = Path(
-        config.bundled_fallback
-        or (
-            Path(__file__).resolve().parent.parent
-            / "datasets"
-            / "bundled"
-            / "gsm8k_test_sample.json"
-        )
-    )
+    data_source = "unknown"
+
     try:
-        if config.gsm8k_data_file and Path(config.gsm8k_data_file).exists():
-            queries = load_gsm8k(
-                split="test",
-                max_samples=config.subset_size,
-                data_file=config.gsm8k_data_file,
+        if cfg.queries_override is not None:
+            queries = list(cfg.queries_override)[: cfg.subset_size]
+            data_source = "queries_override"
+        elif cfg.dataset == "math500":
+            if cfg.math500_data_file and Path(cfg.math500_data_file).exists():
+                queries = load_math500(
+                    max_samples=cfg.subset_size,
+                    data_file=cfg.math500_data_file,
+                )
+                data_source = "local_math500_jsonl"
+            else:
+                queries = load_math500(max_samples=cfg.subset_size, cache_dir="data")
+                data_source = "huggingface_math500"
+        else:
+            bundled = Path(
+                cfg.bundled_fallback
+                or (
+                    Path(__file__).resolve().parent.parent
+                    / "datasets"
+                    / "bundled"
+                    / "gsm8k_test_sample.json"
+                )
             )
-            data_source = "local_json_file"
-        elif bundled.exists():
-            bundled_queries = load_gsm8k(
-                split="test",
-                max_samples=config.subset_size,
-                data_file=str(bundled),
-            )
-            if len(bundled_queries) >= config.subset_size:
-                queries = bundled_queries[: config.subset_size]
-                data_source = "bundled_gsm8k_test_sample"
+            if cfg.gsm8k_data_file and Path(cfg.gsm8k_data_file).exists():
+                queries = load_gsm8k(
+                    split="test",
+                    max_samples=cfg.subset_size,
+                    data_file=cfg.gsm8k_data_file,
+                )
+                data_source = "local_json_file"
+            elif bundled.exists():
+                bundled_queries = load_gsm8k(
+                    split="test",
+                    max_samples=cfg.subset_size,
+                    data_file=str(bundled),
+                )
+                if len(bundled_queries) >= cfg.subset_size:
+                    queries = bundled_queries[: cfg.subset_size]
+                    data_source = "bundled_gsm8k_test_sample"
+                else:
+                    queries = load_gsm8k(
+                        split="test",
+                        max_samples=cfg.subset_size,
+                        cache_dir="data",
+                    )
+                    data_source = "huggingface_openai_gsm8k_test"
             else:
                 queries = load_gsm8k(
                     split="test",
-                    max_samples=config.subset_size,
+                    max_samples=cfg.subset_size,
                     cache_dir="data",
                 )
                 data_source = "huggingface_openai_gsm8k_test"
-        else:
-            queries = load_gsm8k(
-                split="test",
-                max_samples=config.subset_size,
-                cache_dir="data",
-            )
-            data_source = "huggingface_openai_gsm8k_test"
     except Exception as exc:
         summary = {
             "run_status": "BLOCKED",
             "evidence_status": "blocked",
-            "blockers": [f"load_gsm8k failed: {exc}"],
+            "blockers": [f"load_queries failed: {exc}"],
         }
         summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         return {
@@ -242,23 +314,23 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
             "dataset_csv": str(dataset_csv),
         }
 
-    n = min(len(queries), config.subset_size)
+    n = min(len(queries), cfg.subset_size)
     queries = queries[:n]
 
     model_r = OpenAILLMModel(
-        model_name=config.model_name,
+        model_name=cfg.model_name,
         greedy_temperature=0.0,
         sample_temperature=0.0,
-        max_tokens=config.max_tokens,
-        timeout_seconds=float(config.timeout),
+        max_tokens=cfg.max_tokens,
+        timeout_seconds=float(cfg.timeout),
         prompt_prefix=reasoning_prefix,
     )
     model_rev = OpenAILLMModel(
-        model_name=config.model_name,
+        model_name=cfg.model_name,
         greedy_temperature=0.0,
         sample_temperature=0.0,
-        max_tokens=config.max_tokens,
-        timeout_seconds=float(config.timeout),
+        max_tokens=cfg.max_tokens,
+        timeout_seconds=float(cfg.timeout),
         prompt_prefix=revise_model_prefix,
     )
 
@@ -325,17 +397,16 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
             "status": "pending",
         }
         try:
-            rg = run_reasoning_greedy(model_r, q.question)
-            reasoning_raw = str(rg["raw_outputs"][0])
-            reasoning_ans = str(rg.get("predicted_answer", ""))
+            reasoning_raw = model_r.generate(q.question)
+            reasoning_ans = _predicted_from_reasoning_raw(reasoning_raw, match_mode)
             parsed_r = extract_math_answer(reasoning_raw).strip() or reasoning_ans
 
             dr = run_direct_plus_revise(model_rev, q.question)
-            revise_raw = dr["raw_outputs"]
-            revise_ans = str(dr.get("predicted_answer", ""))
+            revise_raw: list[Any] = list(dr["raw_outputs"])
+            revise_ans = _predicted_from_revise_outputs(revise_raw, match_mode)
 
-            r_ok = _answers_match(q.answer, reasoning_ans)
-            v_ok = _answers_match(q.answer, revise_ans)
+            r_ok = answers_match(q.answer, reasoning_ans)
+            v_ok = answers_match(q.answer, revise_ans)
             helpful = 1 if (not r_ok and v_ok) else 0
 
             feat = _numeric_feature_row(q.question, reasoning_raw, parsed_r)
@@ -381,8 +452,11 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
         "run_status": "COMPLETED" if len(ok_rows) == len(queries) else "PARTIAL",
         "evidence_status": "measured_now",
         "provider": "openai",
-        "model_name": config.model_name,
+        "model_name": cfg.model_name,
+        "dataset": cfg.dataset,
+        "answer_match_mode": match_mode,
         "data_source": data_source,
+        "regime_label": cfg.regime_label or "",
         "num_queries_requested": len(queries),
         "num_queries_ok": len(ok_rows),
         "num_queries_error": len(err_rows),
