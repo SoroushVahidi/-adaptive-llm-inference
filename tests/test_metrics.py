@@ -27,6 +27,7 @@ def _make_result(correct: bool, samples: int = 1) -> BaselineResult:
         ground_truth="42",
         correct=correct,
         samples_used=samples,
+        metadata={},
     )
 
 
