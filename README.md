@@ -299,10 +299,17 @@ Writes under `outputs/adaptive_policy_v7/`. See `docs/ADAPTIVE_POLICY_V7.md`.
 
 ### Real GSM8K routing dataset and policy eval (API)
 
-Build paired outcomes (`reasoning_greedy` + `direct_plus_revise`) and feature columns:
+**Oracle multi-strategy labels** (default; writes `outputs/real_routing_dataset/routing_dataset.csv`):
 
 ```bash
 python3 scripts/run_build_real_routing_dataset.py --subset-size 100
+```
+
+**Paired outcomes** for heuristic policy / `revise_helpful` studies (`reasoning_greedy` + `direct_plus_revise` + features):
+
+```bash
+python3 scripts/run_build_real_routing_dataset.py --paired-outcomes --subset-size 100 \
+  --output-dataset-csv data/real_gsm8k_routing_dataset.csv
 ```
 
 Evaluate v5/v6/v7 on `data/real_gsm8k_routing_dataset.csv`:
