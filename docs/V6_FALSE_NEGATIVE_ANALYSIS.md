@@ -26,6 +26,8 @@ V6 **does not revise** when **`answer_error_score == 0`** and the trace passes *
 
 All five: **`revise_recommended: false`**, **`revise_reason: no_escalation`**.
 
+Cases 1–4 keep **`explanation_warning` ≤ 1** (low/moderate). Case 5 uses **high** explanation_warning to illustrate that **explanation pressure alone** still may not trigger revise under V6 when **`answer_error_score` is 0**.
+
 ---
 
 ## Case 1 — Wrong total with verbose (but incorrect) arithmetic
@@ -195,7 +197,7 @@ Final answer: Saturday
 ```
 
 **E. V6 breakdown**  
-- `explanation_warning_score`: **6** (missing literals, rate-related role flags, short reasoning)  
+- `explanation_warning_score`: **6** (missing literals, rate-related role flags, short reasoning) — **not** “low/moderate”; included deliberately to show **high explanation pressure still does not revise** when **`answer_error_score` stays 0** and trust holds.  
 - `answer_error_score`: **0** (**categorical** question → **no** `answer_type_mismatch` on non-numeric final)  
 - `final_answer_confident`: **true** (**Saturday** matches weekday regex)  
 - Route: **`reasoning_greedy`**
