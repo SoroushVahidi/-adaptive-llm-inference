@@ -1,0 +1,25 @@
+# Real OpenAI run: hard GSM8K, MATH500, AIME 2024, GPQA Diamond (HF mirror).
+# Requires OPENAI_API_KEY and internet. Tune max_samples for cost.
+
+model:
+  type: openai
+  model: gpt-4o-mini
+  greedy_temperature: 0.0
+  temperature: 0.7
+  max_tokens: 1024
+  timeout_seconds: 120.0
+  prompt_prefix: >-
+    You are a careful assistant. For math, show brief reasoning and end with
+    'Final answer: ...'. For multiple-choice, end with 'Final answer: X' for letter X.
+
+max_samples: 8
+cache_dir: data
+out_dir: outputs/baselines
+# Fewer threshold points than default to limit API volume
+confidence_router_thresholds: [0.35, 0.5, 0.65]
+
+datasets:
+  - hard_gsm8k
+  - math500
+  - aime2024
+  - gpqa_diamond

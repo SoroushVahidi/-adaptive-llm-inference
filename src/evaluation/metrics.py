@@ -28,9 +28,17 @@ def compute_accuracy(results: list[BaselineResult]) -> dict[str, float]:
     correct = sum(1 for r in results if r.correct)
     total_samples = sum(r.samples_used for r in results)
     n = len(results)
-    return {
+    out: dict[str, float | int] = {
         "accuracy": correct / n,
         "total_samples": total_samples,
         "total_queries": n,
         "avg_samples_per_query": total_samples / n,
     }
+    amb = sum(1 for r in results if getattr(r, "self_consistency_ambiguous", False))
+    ties = sum(1 for r in results if getattr(r, "self_consistency_tie", False))
+    if amb or ties:
+        out["self_consistency_ambiguous_count"] = amb
+        out["self_consistency_tie_count"] = ties
+        out["self_consistency_ambiguous_rate"] = amb / n
+        out["self_consistency_tie_rate"] = ties / n
+    return out
