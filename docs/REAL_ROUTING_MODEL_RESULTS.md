@@ -1,58 +1,34 @@
-# Real Routing Model Results (Initial GSM8K Attempt)
+# Real Learned Router Results (GSM8K, N=100)
 
-## Scope
+**Evidence:** **measured_now** for CSV/JSON under `outputs/real_routing_model/`. **exploratory_only** for claims about learnability at scale.
 
-This report covers the first learned-router attempt on the real GSM8K routing dataset produced by:
+## Dataset
 
-- `scripts/run_build_real_routing_dataset.py`
+- `data/real_gsm8k_routing_dataset.csv` — 100 rows, **2** with `revise_helpful=1`, **98** with `0`.
+- Command: `python3 scripts/run_real_routing_model_eval.py`
 
-and evaluated by:
+## scikit-learn
 
-- `scripts/run_real_routing_model_eval.py`
+Required for training; installed in the run environment. Added to `pyproject.toml` optional `dev` deps as `scikit-learn>=1.3`.
 
-## Models planned
+## Cross-validated models
 
-- decision tree
-- bagging over trees
-- boosting over shallow trees
+Stratified K-fold with `n_splits = min(5, n_pos, n_neg)` → **2 folds** (only 2 positives).
 
-Target label:
+| Model | Accuracy | Precision | Recall | F1 | FPR |
+|-------|----------|-----------|--------|-----|-----|
+| decision_tree | 0.95 | 0.0 | 0.0 | 0.0 | ~0.031 |
+| bagging_trees | 0.96 | 0.0 | 0.0 | 0.0 | ~0.020 |
+| boosting_shallow_trees | 0.96 | 0.0 | 0.0 | 0.0 | ~0.020 |
 
-- `revise_helpful`
+**Interpretation:** With **2 positives**, CV folds often contain **0 or 1** positive in validation; the model **defaults to predicting 0**, hence **zero recall** and **undefined F1** behavior (reported as 0). Accuracy is **majority-class** performance, not evidence of learning `revise_helpful`.
 
-Evaluation metrics:
+## Routing simulation (`outputs/real_routing_model/routing_simulation.csv`)
 
-- accuracy
-- precision
-- recall
-- F1
-- false positive rate
+Learned routes achieve **0.90** accuracy (same as always-reasoning) vs **0.92** for always-revise and **0.92** for heuristic columns matching V6/V7 revise rates.
 
-Routing simulation compares:
+**Conclusion (honest):** **Not enough positive labels** to justify learned routing on this run; collect **more queries** or **stratified hard subsets** where revise_helpful is more frequent.
 
-- learned model route
-- always `reasoning_greedy`
-- always `direct_plus_revise`
-- heuristic calibrated-role proxy
-- heuristic unified-error proxy
+## Artifacts
 
-## Current status in this environment
-
-If real dataset creation is blocked (e.g., missing `OPENAI_API_KEY`), learned-model evaluation is also blocked by design.
-
-Blocked evidence should be labeled:
-
-- `blocked`
-
-Measured model metrics are only labeled:
-
-- `measured_now`
-
-once real dataset rows exist.
-
-## Outputs when model eval succeeds
-
-- `outputs/real_routing_model/model_metrics.csv`
-- `outputs/real_routing_model/per_query_predictions.csv`
-- `outputs/real_routing_model/routing_simulation.csv`
-- `outputs/real_routing_model/feature_importance.csv`
+- `model_metrics.csv`, `per_query_predictions.csv`, `routing_simulation.csv`, `feature_importance.csv`, `summary.json`
