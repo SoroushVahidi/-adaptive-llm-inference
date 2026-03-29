@@ -4,6 +4,8 @@
 
 **Evidence label:** `measured_now` for the run that produced `results/real_v6_false_negative_probe/` (regenerate locally; `results/` is gitignored).
 
+**Reference run (this workspace):** UTC `2026-03-29T14:56:55+00:00`; see `summary.json` in the output folder for the same counts.
+
 ---
 
 ## 1. What was run
