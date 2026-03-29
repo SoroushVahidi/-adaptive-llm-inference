@@ -1,0 +1,41 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "num_rows": 100,
+  "revise_helpful_prevalence": 0.12,
+  "v7_accuracy": 0.82,
+  "v6_accuracy": 0.81,
+  "v7_minus_v6_accuracy": 0.01,
+  "comparison": [
+    {
+      "route": "reasoning_greedy",
+      "accuracy": 0.79,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0
+    },
+    {
+      "route": "direct_plus_revise",
+      "accuracy": 0.86,
+      "avg_cost": 2.0,
+      "revise_rate": 1.0
+    },
+    {
+      "route": "adaptive_policy_v5",
+      "accuracy": 0.86,
+      "avg_cost": 1.53,
+      "revise_rate": 0.53
+    },
+    {
+      "route": "adaptive_policy_v6",
+      "accuracy": 0.81,
+      "avg_cost": 1.26,
+      "revise_rate": 0.26
+    },
+    {
+      "route": "adaptive_policy_v7",
+      "accuracy": 0.82,
+      "avg_cost": 1.46,
+      "revise_rate": 0.46
+    }
+  ]
+}

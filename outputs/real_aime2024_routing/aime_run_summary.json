@@ -1,0 +1,27 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "dataset": "custom",
+  "answer_match_mode": "math",
+  "data_source": "queries_override",
+  "regime_label": "aime2024",
+  "num_queries_requested": 30,
+  "num_queries_ok": 30,
+  "num_queries_error": 0,
+  "revise_helpful_count": 0,
+  "revise_helpful_rate": 0.0,
+  "reasoning_accuracy": 0.13333333333333333,
+  "revise_accuracy": 0.06666666666666667,
+  "reasoning_then_revise_accuracy": 0.16666666666666666,
+  "reasoning_then_revise_helpful_rate": 0.03333333333333333,
+  "include_reasoning_then_revise": true,
+  "paths": {
+    "summary_json": "outputs/real_aime2024_routing/aime_run_summary.json",
+    "per_query_csv": "outputs/real_aime2024_routing/per_query_outputs.csv",
+    "dataset_csv": "data/real_aime2024_routing_dataset.csv",
+    "raw_jsonl": "outputs/real_aime2024_routing/raw_responses.jsonl",
+    "provider_metadata": "outputs/real_aime2024_routing/provider_metadata.json"
+  }
+}

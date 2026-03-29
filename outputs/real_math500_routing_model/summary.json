@@ -1,0 +1,39 @@
+{
+  "run_status": "OK",
+  "evidence_status": "measured_now",
+  "num_rows": 100,
+  "num_positive": 6,
+  "models": [
+    {
+      "model": "decision_tree",
+      "accuracy": 0.94,
+      "precision": 0.5,
+      "recall": 0.3333333333333333,
+      "f1": 0.4,
+      "false_positive_rate": 0.02127659574468085
+    },
+    {
+      "model": "bagging_trees",
+      "accuracy": 0.92,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "false_positive_rate": 0.02127659574468085
+    },
+    {
+      "model": "boosting_shallow_trees",
+      "accuracy": 0.94,
+      "precision": 0.5,
+      "recall": 0.16666666666666666,
+      "f1": 0.25,
+      "false_positive_rate": 0.010638297872340425
+    }
+  ],
+  "best_model": "decision_tree",
+  "outputs": {
+    "model_metrics_csv": "outputs/real_math500_routing_model/model_metrics.csv",
+    "per_query_predictions_csv": "outputs/real_math500_routing_model/per_query_predictions.csv",
+    "routing_simulation_csv": "outputs/real_math500_routing_model/routing_simulation.csv",
+    "feature_importance_csv": "outputs/real_math500_routing_model/feature_importance.csv"
+  }
+}

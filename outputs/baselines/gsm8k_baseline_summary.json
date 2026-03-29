@@ -1,0 +1,28 @@
+{
+  "dataset": "gsm8k",
+  "mode": "numeric",
+  "n_queries": 30,
+  "model_name": "gpt-4o-mini",
+  "strategies": {
+    "reasoning_greedy": {
+      "accuracy": 0.9333333333333333,
+      "avg_cost_proxy": 1.0
+    },
+    "self_consistency_3": {
+      "accuracy": 0.9333333333333333,
+      "avg_cost_proxy": 3.0
+    },
+    "self_consistency_5": {
+      "accuracy": 0.9333333333333333,
+      "avg_cost_proxy": 5.0
+    },
+    "direct_plus_revise": {
+      "accuracy": 0.9333333333333333,
+      "avg_cost_proxy": 2.0
+    },
+    "reasoning_then_revise": {
+      "accuracy": 0.9666666666666667,
+      "avg_cost_proxy": 2.0
+    }
+  }
+}

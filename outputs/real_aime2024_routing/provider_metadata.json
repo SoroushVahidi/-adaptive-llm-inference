@@ -1,0 +1,12 @@
+{
+  "provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "max_tokens": 1024,
+  "timeout_seconds": 150,
+  "subset_size_requested": 30,
+  "dataset": "custom",
+  "answer_match_mode": "math",
+  "regime_label": "aime2024",
+  "gsm8k_data_file": null,
+  "math500_data_file": null
+}

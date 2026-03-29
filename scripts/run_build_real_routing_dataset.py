@@ -55,6 +55,11 @@ Usage
         --subset-size 100 \\
         --model gpt-4o-mini \\
         --output-dir outputs/real_routing_dataset_v2
+
+    # Paired outcomes (reasoning + direct_plus_revise + features) for policy eval
+    python3 scripts/run_build_real_routing_dataset.py \\
+        --paired-outcomes --subset-size 100 \\
+        --output-dataset-csv data/real_gsm8k_routing_dataset.csv
 """
 
 from __future__ import annotations
@@ -73,6 +78,10 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from src.data.build_real_routing_dataset import (  # noqa: E402
+    BuildConfig,
+    build_real_routing_dataset,
+)
 from src.datasets.gsm8k import load_gsm8k  # noqa: E402
 from src.datasets.routing_dataset import (  # noqa: E402
     assemble_routing_dataset,
@@ -183,6 +192,31 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "strategies: " + ", ".join(CORE_ORACLE_STRATEGIES)
         ),
     )
+    parser.add_argument(
+        "--paired-outcomes",
+        action="store_true",
+        help=(
+            "Run reasoning_greedy + direct_plus_revise paired pipeline with "
+            "engineered features (src.data.build_real_routing_dataset) instead "
+            "of the full multi-strategy oracle matrix."
+        ),
+    )
+    parser.add_argument(
+        "--bundled-fallback",
+        default=str(_REPO_ROOT / "src" / "datasets" / "bundled" / "gsm8k_test_sample.json"),
+        metavar="PATH",
+        help="Bundled GSM8K JSON when HF/local file insufficient (paired mode)",
+    )
+    parser.add_argument(
+        "--include-reasoning-then-revise",
+        action="store_true",
+        help="Third model stage: review reasoning trace (paired mode only)",
+    )
+    parser.add_argument(
+        "--regime-label",
+        default="gsm8k_baseline",
+        help="Tag written into paired-mode run summary JSON",
+    )
     return parser.parse_args(argv)
 
 
@@ -274,6 +308,41 @@ def _load_queries(subset_size: int, gsm8k_data_file: str | None) -> list[Any]:
 # ---------------------------------------------------------------------------
 
 
+def _run_paired_outcomes(args: argparse.Namespace, timestamp: str) -> None:
+    """Reasoning + direct_plus_revise (+ optional RTR) with feature columns."""
+    output_dir = Path(args.output_dir)
+    data_file = args.gsm8k_data_file
+    if data_file is not None and not Path(data_file).exists():
+        data_file = None
+
+    out_csv = args.output_dataset_csv
+    if out_csv is None:
+        out_csv = "data/real_gsm8k_routing_dataset.csv"
+
+    result = build_real_routing_dataset(
+        BuildConfig(
+            gsm8k_data_file=Path(data_file) if data_file else None,
+            subset_size=args.subset_size,
+            output_dir=output_dir,
+            output_dataset_csv=Path(out_csv),
+            model_name=args.model,
+            max_tokens=int(args.max_tokens),
+            timeout=int(args.timeout),
+            bundled_fallback=Path(args.bundled_fallback),
+            dataset="gsm8k",
+            summary_filename="gsm8k_subset_run_summary.json",
+            per_query_csv_filename="gsm8k_per_query_outputs.csv",
+            regime_label=args.regime_label,
+            include_reasoning_then_revise=args.include_reasoning_then_revise,
+        )
+    )
+    print(json.dumps(result["summary"], indent=2))
+    print(f"summary_json={result['summary_path']}")
+    print(f"per_query_csv={result['per_query_csv']}")
+    print(f"dataset_csv={result['dataset_csv']}")
+    print(f"timestamp_utc={timestamp}")
+
+
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     timestamp = _now_utc()
@@ -281,6 +350,10 @@ def main(argv: list[str] | None = None) -> None:
 
     # --- Guard: API key ---
     _check_api_key()
+
+    if args.paired_outcomes:
+        _run_paired_outcomes(args, timestamp)
+        return
 
     # --- Load queries ---
     queries = _load_queries(args.subset_size, args.gsm8k_data_file)

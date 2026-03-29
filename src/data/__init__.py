@@ -1,5 +1,1 @@
-"""Data-building pipelines."""
-
-from src.data.build_real_routing_dataset import BuildConfig, build_real_routing_dataset
-
-__all__ = ["BuildConfig", "build_real_routing_dataset"]
+"""Data-building utilities (e.g. real routing datasets)."""

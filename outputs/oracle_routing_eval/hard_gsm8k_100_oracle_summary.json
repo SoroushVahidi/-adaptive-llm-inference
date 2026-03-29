@@ -1,0 +1,7 @@
+{
+  "dataset": "hard_gsm8k_100",
+  "accuracy": 0.91,
+  "avg_cost": 1.12,
+  "revise_rate": 0.12,
+  "n": 100
+}

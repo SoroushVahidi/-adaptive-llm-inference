@@ -38,6 +38,7 @@ from src.evaluation.strategy_expansion_eval import (
     run_direct_plus_revise,
     run_direct_plus_verify,
     run_reasoning_best_of_3,
+    run_reasoning_then_revise,
     run_structured_sampling_3,
 )
 from src.models.openai_llm import OpenAILLMModel
@@ -76,6 +77,7 @@ STRATEGY_COST_PROXY: dict[str, int] = {
     "structured_sampling_3": 3,   # 3 sequential prompts
     "direct_plus_verify": 2,      # direct + verify
     "direct_plus_revise": 2,      # direct + revise
+    "reasoning_then_revise": 2,   # reasoning + review/revise pass
     "direct_plus_critique_plus_final": 3,  # direct + critique + final
     "first_pass_then_hint_guided_reason": 2,  # first pass + hint-guided
     "strong_direct": 1,           # 1 call on the strong model
@@ -94,6 +96,7 @@ _ORACLE_RUNNERS: dict[str, Any] = {
     # strong_direct uses the same runner as direct_greedy but with a different
     # model object that the caller supplies separately.
     "strong_direct": run_direct_greedy,
+    "reasoning_then_revise": run_reasoning_then_revise,
 }
 
 CORE_ORACLE_STRATEGIES: list[str] = [
@@ -102,6 +105,7 @@ CORE_ORACLE_STRATEGIES: list[str] = [
     "structured_sampling_3",
     "direct_plus_verify",
     "direct_plus_revise",
+    "reasoning_then_revise",
     "direct_plus_critique_plus_final",
     "first_pass_then_hint_guided_reason",
 ]
