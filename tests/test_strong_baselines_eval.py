@@ -72,7 +72,7 @@ def test_reasoning_greedy_one_call() -> None:
 def test_compute_ladder_smoke() -> None:
     queries = [_FakeQuery("q1", "What is 2+2?", "4")]
     ladder = evaluate_compute_ladder(
-        _FakeModel("4"), queries, dataset_key="test", use_math_extraction=False
+        _FakeModel("4"), queries, dataset_key="test", task_type="numeric"
     )
     assert "reasoning_greedy" in ladder["methods"]
     assert ladder["methods"]["reasoning_greedy"]["accuracy"] == 1.0
@@ -86,7 +86,13 @@ def test_self_consistency_3_uses_math_when_flagged() -> None:
         def generate_n(self, p: str, n: int) -> list[str]:  # noqa: ARG002
             return [r"Final answer: \boxed{\frac{1}{2}}"] * n
 
+    from src.datasets.gsm8k import Query
+
+    q = Query(id="1", question="q", answer=r"\frac{1}{2}")
     out = run_static_method(
-        _M(), "self_consistency_3", "q", use_math_extraction=True
+        _M(),
+        "self_consistency_3",
+        q,
+        eval_opts={"use_math_extraction": True, "use_mcq": False},
     )
     assert out["samples_used"] == 3

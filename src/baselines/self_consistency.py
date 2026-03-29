@@ -13,6 +13,7 @@ from src.utils.answer_extraction import (
     extract_numeric_answer,
     normalize_math_answer,
 )
+from src.utils.mcq_answer import extract_mcq_letter, normalize_mcq_letter
 
 
 def _normalize_gold_for_compare(ground_truth: str, *, use_math: bool) -> str:
@@ -37,6 +38,7 @@ def majority_vote_self_consistency(
     raw_answers: list[str],
     *,
     use_math_extraction: bool = False,
+    use_mcq: bool = False,
 ) -> tuple[str, bool, bool]:
     """Deterministic majority vote with tie and ambiguity handling.
 
@@ -51,8 +53,11 @@ def majority_vote_self_consistency(
         ``tie`` is True when two or more distinct values tie for highest count
         (resolved by lexicographic order of normalized strings, and logged).
     """
-    extractor = extract_math_answer if use_math_extraction else extract_numeric_answer
-    extracted = [_normalize_numeric_vote(extractor(a)) for a in raw_answers]
+    if use_mcq:
+        extracted = [normalize_mcq_letter(extract_mcq_letter(a)) for a in raw_answers]
+    else:
+        extractor = extract_math_answer if use_math_extraction else extract_numeric_answer
+        extracted = [_normalize_numeric_vote(extractor(a)) for a in raw_answers]
     counter = Counter(extracted)
     if not counter:
         return "", True, False
@@ -122,16 +127,21 @@ def self_consistency_result_for_samples(
     n_samples: int,
     *,
     use_math_extraction: bool = False,
+    use_mcq: bool = False,
 ) -> BaselineResult:
     """Build a BaselineResult for N-sample self-consistency (for composite runners)."""
     raw_answers = model.generate_n(question, n_samples)
     majority, ambiguous, tie = majority_vote_self_consistency(
-        raw_answers, use_math_extraction=use_math_extraction
+        raw_answers, use_math_extraction=use_math_extraction, use_mcq=use_mcq
     )
-    gold_cmp = _normalize_gold_for_compare(ground_truth, use_math=use_math_extraction)
-    maj_cmp = (
-        normalize_math_answer(majority) if use_math_extraction else majority
-    )
+    if use_mcq:
+        gold_cmp = normalize_mcq_letter(ground_truth)
+        maj_cmp = normalize_mcq_letter(majority)
+    else:
+        gold_cmp = _normalize_gold_for_compare(ground_truth, use_math=use_math_extraction)
+        maj_cmp = (
+            normalize_math_answer(majority) if use_math_extraction else majority
+        )
     return BaselineResult(
         query_id=query_id,
         question=question,

@@ -2,8 +2,8 @@
 """Run strong baseline suite: compute ladder, routers, summaries.
 
 Example:
-  python3 scripts/run_strong_baselines.py --model dummy --max-samples 30
-  python3 scripts/run_strong_baselines.py --config configs/strong_baselines.yaml
+  python3 scripts/run_strong_baselines.py --config configs/strong_baselines_dummy.yaml
+  python3 scripts/run_strong_baselines.py --config configs/strong_baselines_real.yaml
 """
 
 from __future__ import annotations
@@ -17,12 +17,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.datasets.aime2024 import load_aime2024
+from src.datasets.gpqa import load_gpqa_diamond
 from src.datasets.gsm8k import load_gsm8k
 from src.datasets.hard_gsm8k import load_hard_gsm8k
 from src.datasets.math500 import load_math500
 from src.evaluation.strong_baselines_eval import (
     append_confidence_router_csv,
     build_summary_rows,
+    compute_disagreement_analysis,
     evaluate_best_route_style,
     evaluate_compute_ladder,
     evaluate_confidence_router_curve,
@@ -30,10 +33,12 @@ from src.evaluation.strong_baselines_eval import (
     write_best_route_style_json,
     write_compute_ladder_json,
     write_dataset_rollup_csv,
+    write_disagreement_analysis_json,
     write_final_summary_csv,
     write_output_router_json,
 )
 from src.models.dummy import DummyModel
+from src.models.openai_llm import OpenAILLMModel
 from src.utils.config import load_config
 
 
@@ -49,12 +54,16 @@ def _load_model(model_type: str, model_cfg: dict) -> object:
             raise RuntimeError(
                 "BLOCKER: OPENAI_API_KEY missing. Set the environment variable and retry."
             )
-        from src.models.openai_llm import OpenAILLM
-
-        return OpenAILLM(
+        return OpenAILLMModel(
             model_name=model_cfg.get("model", "gpt-4o-mini"),
-            temperature=float(model_cfg.get("temperature", 0.7)),
+            greedy_temperature=float(model_cfg.get("greedy_temperature", 0.0)),
+            sample_temperature=float(model_cfg.get("temperature", 0.7)),
             max_tokens=int(model_cfg.get("max_tokens", 1024)),
+            timeout_seconds=float(model_cfg.get("timeout_seconds", 120.0)),
+            prompt_prefix=model_cfg.get(
+                "prompt_prefix",
+                "You are a careful reasoning assistant. Follow the user format.",
+            ),
         )
     raise ValueError(f"Unknown model type: {model_type}")
 
@@ -63,10 +72,16 @@ def _load_dataset(
     name: str,
     max_samples: int | None,
     cache_dir: str,
-    gsm8k_data_file: str | None,
-    math500_data_file: str | None,
-) -> tuple[str, list, bool]:
-    """Returns (dataset_key, queries, use_math_extraction)."""
+    paths_cfg: dict,
+) -> tuple[str, list, str]:
+    """Returns (dataset_key, queries, task_type)."""
+    gsm8k_data_file = paths_cfg.get("gsm8k_data_file")
+    math500_data_file = paths_cfg.get("math500_data_file")
+    aime_data_file = paths_cfg.get("aime_data_file")
+    gpqa_data_file = paths_cfg.get("gpqa_data_file")
+    aime_jsonl = paths_cfg.get("aime_jsonl_out", "data/aime_2024_normalized.jsonl")
+    gpqa_jsonl = paths_cfg.get("gpqa_jsonl_out", "data/gpqa_diamond_normalized.jsonl")
+
     if name in ("gsm8k", "gsm8k_test"):
         q = load_gsm8k(
             split="test",
@@ -74,7 +89,7 @@ def _load_dataset(
             cache_dir=cache_dir,
             data_file=gsm8k_data_file,
         )
-        return "gsm8k", q, False
+        return "gsm8k", q, "numeric"
     if name in ("hard_gsm8k", "gsm8k_hard"):
         q = load_hard_gsm8k(
             split="test",
@@ -82,7 +97,7 @@ def _load_dataset(
             cache_dir=cache_dir,
             data_file=gsm8k_data_file,
         )
-        return "hard_gsm8k", q, False
+        return "hard_gsm8k", q, "numeric"
     if name in ("math500", "math_500"):
         q = load_math500(
             split="test",
@@ -90,7 +105,23 @@ def _load_dataset(
             cache_dir=cache_dir,
             data_file=math500_data_file,
         )
-        return "math500", q, True
+        return "math500", q, "math"
+    if name in ("aime2024", "aime_2024", "aime"):
+        q = load_aime2024(
+            max_samples=max_samples,
+            cache_dir=cache_dir,
+            data_file=aime_data_file,
+            jsonl_path=aime_jsonl if aime_data_file is None else None,
+        )
+        return "aime2024", q, "numeric"
+    if name in ("gpqa_diamond", "gpqa", "gpqa_diamond_mc"):
+        q = load_gpqa_diamond(
+            max_samples=max_samples,
+            cache_dir=cache_dir,
+            data_file=gpqa_data_file,
+            jsonl_path=gpqa_jsonl if gpqa_data_file is None else None,
+        )
+        return "gpqa_diamond", q, "mcq"
     raise ValueError(f"Unknown dataset: {name}")
 
 
@@ -127,8 +158,19 @@ def main() -> int:
     datasets = cfg.get("datasets", args.datasets)
     out_dir = Path(cfg.get("out_dir", args.out_dir))
     cache_dir = cfg.get("cache_dir", "data")
-    gsm8k_data_file = cfg.get("gsm8k_data_file")
-    math500_data_file = cfg.get("math500_data_file")
+    paths_cfg = {
+        "gsm8k_data_file": cfg.get("gsm8k_data_file"),
+        "math500_data_file": cfg.get("math500_data_file"),
+        "aime_data_file": cfg.get("aime_data_file"),
+        "gpqa_data_file": cfg.get("gpqa_data_file"),
+        "aime_jsonl_out": cfg.get("aime_jsonl_out", "data/aime_2024_normalized.jsonl"),
+        "gpqa_jsonl_out": cfg.get("gpqa_jsonl_out", "data/gpqa_diamond_normalized.jsonl"),
+    }
+    conf_thresholds = cfg.get("confidence_router_thresholds")
+    eval_flags = cfg.get("evaluate", {})
+    run_conf = eval_flags.get("confidence_router", True)
+    run_output = eval_flags.get("output_router", True)
+    run_best = eval_flags.get("best_route_style", True)
 
     try:
         model = _load_model(model_type, model_cfg)
@@ -139,17 +181,26 @@ def main() -> int:
 
     out_dir.mkdir(parents=True, exist_ok=True)
     all_summary_rows: list[dict] = []
-    run_log: dict = {"model_type": model_type, "datasets": {}, "blockers": []}
+    run_log: dict = {
+        "model_type": model_type,
+        "model_config_logged": {
+            k: model_cfg.get(k)
+            for k in ("model", "temperature", "greedy_temperature", "max_tokens")
+        },
+        "datasets": {},
+        "blockers": [],
+        "skipped_eval": [],
+    }
 
     for ds_name in datasets:
         curve_dpr: list[dict] = []
         curve_sc3: list[dict] = []
         output_payloads: list[dict] = []
-        br: dict = {}
+        br: dict | None = None
 
         try:
-            ds_key, queries, use_math = _load_dataset(
-                ds_name, max_samples, cache_dir, gsm8k_data_file, math500_data_file
+            ds_key, queries, task_type = _load_dataset(
+                ds_name, max_samples, cache_dir, paths_cfg
             )
         except Exception as e:
             print(f"EXACT ERROR loading dataset {ds_name}:", repr(e))
@@ -158,7 +209,7 @@ def main() -> int:
             if "connection" in err_s or "network" in err_s or "timeout" in err_s:
                 run_log["blockers"].append("internet / network / timeout")
             elif "401" in err_s or "403" in err_s or "gated" in err_s:
-                run_log["blockers"].append("HF dataset access failure")
+                run_log["blockers"].append("Hugging Face token / gated dataset access")
             else:
                 run_log["blockers"].append(f"dataset load ({ds_name}): {e}")
             run_log["datasets"][ds_name] = {"status": "failed_load", "error": str(e)}
@@ -171,7 +222,7 @@ def main() -> int:
             run_log["datasets"][ds_key] = {"status": "empty"}
             continue
 
-        print(f"\n=== {ds_key} ({len(queries)} queries, math_extract={use_math}) ===")
+        print(f"\n=== {ds_key} ({len(queries)} queries, task_type={task_type}) ===")
 
         def _set_gt(m: object, q) -> None:
             if isinstance(m, DummyModel):
@@ -181,9 +232,13 @@ def main() -> int:
             for q in queries:
                 _set_gt(model, q)
             ladder = evaluate_compute_ladder(
-                model, queries, dataset_key=ds_key, use_math_extraction=use_math
+                model, queries, dataset_key=ds_key, task_type=task_type
             )
             write_compute_ladder_json(ladder, out_dir / f"{ds_key}_compute_ladder.json")
+            disc = compute_disagreement_analysis(ladder)
+            write_disagreement_analysis_json(
+                disc, out_dir / f"{ds_key}_disagreement_analysis.json"
+            )
         except Exception as e:
             print("EXACT ERROR in compute_ladder:", repr(e))
             traceback.print_exc()
@@ -194,73 +249,88 @@ def main() -> int:
         conf_path = out_dir / f"{ds_key}_confidence_router.csv"
         if conf_path.exists():
             conf_path.unlink()
-        try:
-            for q in queries:
-                _set_gt(model, q)
-            curve_dpr = evaluate_confidence_router_curve(
-                model,
-                queries,
-                dataset_key=ds_key,
-                use_math_extraction=use_math,
-                strong_action="direct_plus_revise",
-            )
-            for q in queries:
-                _set_gt(model, q)
-            curve_sc3 = evaluate_confidence_router_curve(
-                model,
-                queries,
-                dataset_key=ds_key,
-                use_math_extraction=use_math,
-                strong_action="self_consistency_3",
-            )
-            append_confidence_router_csv(curve_dpr + curve_sc3, conf_path)
-        except Exception as e:
-            print("EXACT ERROR in confidence_router:", repr(e))
-            traceback.print_exc()
-            run_log["blockers"].append(f"{ds_key} confidence_router: {e}")
-
-        try:
-            for action in ("reasoning_then_revise", "self_consistency_3"):
+        if run_conf:
+            try:
                 for q in queries:
                     _set_gt(model, q)
-                pl = evaluate_output_router(
+                curve_dpr = evaluate_confidence_router_curve(
                     model,
                     queries,
                     dataset_key=ds_key,
-                    use_math_extraction=use_math,
-                    escalate_action=action,
+                    task_type=task_type,
+                    strong_action="direct_plus_revise",
+                    thresholds=conf_thresholds,
                 )
-                output_payloads.append(pl)
-            write_output_router_json(
-                {"dataset": ds_key, "variants": output_payloads},
-                out_dir / f"{ds_key}_output_router.json",
-            )
-        except Exception as e:
-            print("EXACT ERROR in output_router:", repr(e))
-            traceback.print_exc()
-            run_log["blockers"].append(f"{ds_key} output_router: {e}")
+                for q in queries:
+                    _set_gt(model, q)
+                curve_sc3 = evaluate_confidence_router_curve(
+                    model,
+                    queries,
+                    dataset_key=ds_key,
+                    task_type=task_type,
+                    strong_action="self_consistency_3",
+                    thresholds=conf_thresholds,
+                )
+                append_confidence_router_csv(curve_dpr + curve_sc3, conf_path)
+            except Exception as e:
+                print("EXACT ERROR in confidence_router:", repr(e))
+                traceback.print_exc()
+                run_log["blockers"].append(f"{ds_key} confidence_router: {e}")
+        else:
+            run_log["skipped_eval"].append(f"{ds_key}: confidence_router disabled in config")
 
-        try:
-            for q in queries:
-                _set_gt(model, q)
-            br = evaluate_best_route_style(
-                model, queries, dataset_key=ds_key, use_math_extraction=use_math
-            )
-            write_best_route_style_json(br, out_dir / f"{ds_key}_best_route_style.json")
-        except Exception as e:
-            print("EXACT ERROR in best_route_style:", repr(e))
-            traceback.print_exc()
-            run_log["blockers"].append(f"{ds_key} best_route_style: {e}")
-            br = {
-                "accuracy": 0.0,
-                "avg_cost_proxy": 0.0,
-                "note": f"failed: {e}",
-            }
+        if run_output:
+            try:
+                for action in ("reasoning_then_revise", "self_consistency_3"):
+                    for q in queries:
+                        _set_gt(model, q)
+                    pl = evaluate_output_router(
+                        model,
+                        queries,
+                        dataset_key=ds_key,
+                        task_type=task_type,
+                        escalate_action=action,
+                    )
+                    output_payloads.append(pl)
+                write_output_router_json(
+                    {"dataset": ds_key, "variants": output_payloads},
+                    out_dir / f"{ds_key}_output_router.json",
+                )
+            except Exception as e:
+                print("EXACT ERROR in output_router:", repr(e))
+                traceback.print_exc()
+                run_log["blockers"].append(f"{ds_key} output_router: {e}")
+        else:
+            run_log["skipped_eval"].append(f"{ds_key}: output_router disabled in config")
+
+        if run_best:
+            try:
+                for q in queries:
+                    _set_gt(model, q)
+                br = evaluate_best_route_style(
+                    model, queries, dataset_key=ds_key, task_type=task_type
+                )
+                write_best_route_style_json(br, out_dir / f"{ds_key}_best_route_style.json")
+            except Exception as e:
+                print("EXACT ERROR in best_route_style:", repr(e))
+                traceback.print_exc()
+                run_log["blockers"].append(f"{ds_key} best_route_style: {e}")
+                br = {
+                    "accuracy": 0.0,
+                    "avg_cost_proxy": 0.0,
+                    "note": f"failed: {e}",
+                }
+        else:
+            run_log["skipped_eval"].append(f"{ds_key}: best_route_style disabled in config")
 
         run_log["datasets"][ds_key] = {
             "status": "ok",
+            "task_type": task_type,
             "n_queries": len(queries),
             "ladder_methods": list(ladder.get("methods", {}).keys()),
+            "multi_action_classifier_trainable": disc.get(
+                "multi_action_classifier_trainable", False
+            ),
         }
 
         rows = build_summary_rows(
