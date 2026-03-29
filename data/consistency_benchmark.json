@@ -1,0 +1,422 @@
+[
+  {
+    "question_id": "cb_001",
+    "question": "Lena had 24 stickers. She gave 7 to a friend and then bought 5 more. How many stickers does she have left?",
+    "gold_answer": "22",
+    "candidate_answers": [
+      {
+        "answer": "22",
+        "is_correct": true
+      },
+      {
+        "answer": "17",
+        "is_correct": false,
+        "failure_type": "intermediate_as_final"
+      },
+      {
+        "answer": "29",
+        "is_correct": false,
+        "failure_type": "total_vs_remaining"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_002",
+    "question": "A taxi charges $4 per ride plus $2 per mile. For a 6-mile ride, what is the total cost?",
+    "gold_answer": "16",
+    "candidate_answers": [
+      {
+        "answer": "16",
+        "is_correct": true
+      },
+      {
+        "answer": "2",
+        "is_correct": false,
+        "failure_type": "rate_vs_total"
+      },
+      {
+        "answer": "12",
+        "is_correct": false,
+        "failure_type": "hidden_constraint"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_003",
+    "question": "There are 45 apples in crates. 18 are sold. How many apples remain?",
+    "gold_answer": "27",
+    "candidate_answers": [
+      {
+        "answer": "27",
+        "is_correct": true
+      },
+      {
+        "answer": "45",
+        "is_correct": false,
+        "failure_type": "total_vs_remaining"
+      },
+      {
+        "answer": "18",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_004",
+    "question": "A classroom has 28 students. They are split equally into groups of 6. What is the minimum number of groups needed?",
+    "gold_answer": "5",
+    "candidate_answers": [
+      {
+        "answer": "5",
+        "is_correct": true
+      },
+      {
+        "answer": "4",
+        "is_correct": false,
+        "failure_type": "floor_ceiling"
+      },
+      {
+        "answer": "4.6",
+        "is_correct": false,
+        "failure_type": "floor_ceiling"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_005",
+    "question": "A jar has red and blue marbles in a ratio of 2:3 and a total of 25 marbles. How many are red?",
+    "gold_answer": "10",
+    "candidate_answers": [
+      {
+        "answer": "10",
+        "is_correct": true
+      },
+      {
+        "answer": "15",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      },
+      {
+        "answer": "12",
+        "is_correct": false,
+        "failure_type": "ratio_constraint"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_006",
+    "question": "Nora reads 12 pages on Monday and 15 on Tuesday from a 50-page book. How many pages are remaining?",
+    "gold_answer": "23",
+    "candidate_answers": [
+      {
+        "answer": "23",
+        "is_correct": true
+      },
+      {
+        "answer": "27",
+        "is_correct": false,
+        "failure_type": "intermediate_as_final"
+      },
+      {
+        "answer": "50",
+        "is_correct": false,
+        "failure_type": "total_vs_remaining"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_007",
+    "question": "A machine makes 9 parts per hour for 7 hours. How many parts are made in total?",
+    "gold_answer": "63",
+    "candidate_answers": [
+      {
+        "answer": "63",
+        "is_correct": true
+      },
+      {
+        "answer": "9",
+        "is_correct": false,
+        "failure_type": "rate_vs_total"
+      },
+      {
+        "answer": "7",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_008",
+    "question": "A bus has 40 seats. 26 are occupied. How many seats are left?",
+    "gold_answer": "14",
+    "candidate_answers": [
+      {
+        "answer": "14",
+        "is_correct": true
+      },
+      {
+        "answer": "26",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      },
+      {
+        "answer": "40",
+        "is_correct": false,
+        "failure_type": "total_vs_remaining"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_009",
+    "question": "Tickets cost $15 each. Mia buys 4 tickets. What is the total amount paid?",
+    "gold_answer": "60",
+    "candidate_answers": [
+      {
+        "answer": "60",
+        "is_correct": true
+      },
+      {
+        "answer": "15",
+        "is_correct": false,
+        "failure_type": "rate_vs_total"
+      },
+      {
+        "answer": "4",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_010",
+    "question": "A school requires at least 12 volunteers for an event. How many volunteers are needed at minimum?",
+    "gold_answer": "12",
+    "candidate_answers": [
+      {
+        "answer": "12",
+        "is_correct": true
+      },
+      {
+        "answer": "10",
+        "is_correct": false,
+        "failure_type": "hidden_constraint"
+      },
+      {
+        "answer": "11",
+        "is_correct": false,
+        "failure_type": "hidden_constraint"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_011",
+    "question": "A warehouse can pack at most 8 boxes per truck. There are 50 boxes. What is the minimum number of trucks required?",
+    "gold_answer": "7",
+    "candidate_answers": [
+      {
+        "answer": "7",
+        "is_correct": true
+      },
+      {
+        "answer": "6",
+        "is_correct": false,
+        "failure_type": "floor_ceiling"
+      },
+      {
+        "answer": "6.25",
+        "is_correct": false,
+        "failure_type": "floor_ceiling"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_012",
+    "question": "A team won 14 games and lost 9. How many games did they play in total?",
+    "gold_answer": "23",
+    "candidate_answers": [
+      {
+        "answer": "23",
+        "is_correct": true
+      },
+      {
+        "answer": "14",
+        "is_correct": false,
+        "failure_type": "intermediate_as_final"
+      },
+      {
+        "answer": "9",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_013",
+    "question": "Sam had 80 dollars. He spent 35 dollars and then 10 dollars. How much money is left?",
+    "gold_answer": "35",
+    "candidate_answers": [
+      {
+        "answer": "35",
+        "is_correct": true
+      },
+      {
+        "answer": "45",
+        "is_correct": false,
+        "failure_type": "intermediate_as_final"
+      },
+      {
+        "answer": "80",
+        "is_correct": false,
+        "failure_type": "total_vs_remaining"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_014",
+    "question": "Paint is mixed in a ratio of 1:4 (red:blue) for a total of 30 liters. How many liters are red?",
+    "gold_answer": "6",
+    "candidate_answers": [
+      {
+        "answer": "6",
+        "is_correct": true
+      },
+      {
+        "answer": "24",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      },
+      {
+        "answer": "8",
+        "is_correct": false,
+        "failure_type": "ratio_constraint"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_015",
+    "question": "A printer outputs 30 pages per minute for 3 minutes. How many pages total are printed?",
+    "gold_answer": "90",
+    "candidate_answers": [
+      {
+        "answer": "90",
+        "is_correct": true
+      },
+      {
+        "answer": "30",
+        "is_correct": false,
+        "failure_type": "rate_vs_total"
+      },
+      {
+        "answer": "3",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_016",
+    "question": "A fundraiser must collect no more than 200 dollars in gift-card rewards. What is the maximum reward amount allowed?",
+    "gold_answer": "200",
+    "candidate_answers": [
+      {
+        "answer": "200",
+        "is_correct": true
+      },
+      {
+        "answer": "230",
+        "is_correct": false,
+        "failure_type": "hidden_constraint"
+      },
+      {
+        "answer": "210",
+        "is_correct": false,
+        "failure_type": "hidden_constraint"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_017",
+    "question": "A tank holds 120 liters. 45 liters are used. How many liters remain?",
+    "gold_answer": "75",
+    "candidate_answers": [
+      {
+        "answer": "75",
+        "is_correct": true
+      },
+      {
+        "answer": "120",
+        "is_correct": false,
+        "failure_type": "total_vs_remaining"
+      },
+      {
+        "answer": "45",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_018",
+    "question": "Each bag has 18 marbles. 5 bags are bought. How many marbles are there altogether?",
+    "gold_answer": "90",
+    "candidate_answers": [
+      {
+        "answer": "90",
+        "is_correct": true
+      },
+      {
+        "answer": "18",
+        "is_correct": false,
+        "failure_type": "rate_vs_total"
+      },
+      {
+        "answer": "5",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_019",
+    "question": "A class has 31 students and vans hold at most 7 students each. What is the minimum number of vans needed?",
+    "gold_answer": "5",
+    "candidate_answers": [
+      {
+        "answer": "5",
+        "is_correct": true
+      },
+      {
+        "answer": "4",
+        "is_correct": false,
+        "failure_type": "floor_ceiling"
+      },
+      {
+        "answer": "4.4",
+        "is_correct": false,
+        "failure_type": "floor_ceiling"
+      }
+    ]
+  },
+  {
+    "question_id": "cb_020",
+    "question": "An office bought 52 notebooks, then gave away 19. How many notebooks are left?",
+    "gold_answer": "33",
+    "candidate_answers": [
+      {
+        "answer": "33",
+        "is_correct": true
+      },
+      {
+        "answer": "52",
+        "is_correct": false,
+        "failure_type": "total_vs_remaining"
+      },
+      {
+        "answer": "19",
+        "is_correct": false,
+        "failure_type": "wrong_target_quantity"
+      }
+    ]
+  }
+]
