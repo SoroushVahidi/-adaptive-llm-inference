@@ -12,6 +12,12 @@ from src.features.number_role_features import (
     compute_role_coverage_features,
     extract_problem_numbers,
 )
+from src.features.number_role_lexicon import (
+    classify_local_role_cue,
+    extract_number_word_matches,
+    get_role_cues,
+    normalize_number_word,
+)
 from src.features.precompute_features import extract_first_pass_features, extract_query_features
 from src.features.selective_prediction_features import extract_selective_prediction_features
 from src.features.self_verification_features import extract_self_verification_features
@@ -30,6 +36,10 @@ __all__ = [
     "assign_number_roles",
     "compute_role_coverage_features",
     "compute_calibrated_role_decision",
+    "normalize_number_word",
+    "extract_number_word_matches",
+    "get_role_cues",
+    "classify_local_role_cue",
     "extract_self_verification_features",
     "extract_selective_prediction_features",
     "extract_calibration_features",
