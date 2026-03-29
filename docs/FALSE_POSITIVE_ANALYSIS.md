@@ -245,6 +245,24 @@ This reinforces the **marginal-value / estimand** issue: signals measure **“do
 
 ---
 
+## Adaptive policy v6 recheck (2026-03-29)
+
+**Method:** Same five traces as above; routing only (no new model calls). **V5** uses default `AdaptivePolicyV5Config` (unified on). **V6** uses `AdaptivePolicyV6Config`.
+
+| Case ID | V5 chosen strategy | V6 chosen strategy | V6 `explanation_warning_score` | V6 `answer_error_score` | V6 `final_answer_confident` |
+|---------|-------------------|-------------------|-------------------------------|-------------------------|----------------------------|
+| `gsm8k_test_8` | `direct_plus_revise` | `reasoning_greedy` | 10 | 0 | true |
+| `gsm8k_test_11` | `direct_plus_revise` | `reasoning_greedy` | 6 | 0 | true |
+| `gsm8k_test_18` | `direct_plus_revise` | `reasoning_greedy` | 6 | 0 | true |
+| `gsm8k_test_0` | `direct_plus_revise` | `reasoning_greedy` | 5 | 0 | true |
+| `gsm8k_test_13` | `direct_plus_revise` | `reasoning_greedy` | 4 | 0 | true |
+
+**Interpretation:** V6 **stops revising** on these **gold-correct** concise fixtures. Explanation-level signals still **register** (scores in the table) but **do not** trigger **`direct_plus_revise`** without **answer_error** evidence.
+
+**Reproduce:** `python3 scripts/run_adaptive_policy_v6_eval.py --config configs/adaptive_policy_v6_offline.yaml` → `outputs/adaptive_policy_v6/per_case_results.csv`.
+
+---
+
 ## Reproduction
 
 ```bash

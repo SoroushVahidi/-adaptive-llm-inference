@@ -279,6 +279,16 @@ python3 scripts/run_adaptive_policy_eval.py \
 This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
 `outputs/adaptive_policy_v1/`.
 
+For an **offline** comparison of adaptive routing policies v4/v5/v6 (no API; uses
+documented false-positive fixtures and small recall proxies):
+
+```bash
+python3 scripts/run_adaptive_policy_v6_eval.py --config configs/adaptive_policy_v6_offline.yaml
+```
+
+Writes `summary.json`, `per_case_results.csv`, and `signal_summary.csv` under
+`outputs/adaptive_policy_v6/`. See `docs/ADAPTIVE_POLICY_V6.md`.
+
 ## Tests & Linting
 
 ```bash
