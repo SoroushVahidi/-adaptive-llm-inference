@@ -10,7 +10,8 @@ What it does
 ------------
 1. Checks that OPENAI_API_KEY is set (exits with a clear blocker message if not).
 2. Loads *subset-size* queries from the real GSM8K test split (via HuggingFace;
-   falls back to the bundled sample when offline).
+   falls back to ``--gsm8k-data-file`` if provided, or the bundled sample when
+   offline).
 3. Initialises the primary LLM model.
 4. Runs all core oracle strategies on every query (same strategies as the oracle
    subset evaluation).
@@ -18,7 +19,8 @@ What it does
    ``run_oracle_subset_eval.py`` so that ``src.datasets.routing_dataset`` can
    read them directly.
 6. Builds the flat routing dataset CSV with query features + oracle labels.
-7. Writes all outputs to ``outputs/real_routing_dataset/``.
+7. Writes all outputs to ``outputs/real_routing_dataset/`` (and optionally to
+   ``--output-dataset-csv`` for downstream compatibility).
 
 Outputs
 -------
@@ -32,8 +34,7 @@ Outputs
 Prerequisites
 -------------
 - OPENAI_API_KEY environment variable set
-- Network access to HuggingFace (or bundled sample present at
-  src/datasets/bundled/gsm8k_test_sample.json)
+- Network access to HuggingFace (or --gsm8k-data-file / bundled sample)
 - pip install -e ".[dev]" already run
 
 Usage
@@ -43,6 +44,11 @@ Usage
 
     # Quick smoke-test with a smaller subset
     python3 scripts/run_build_real_routing_dataset.py --subset-size 5
+
+    # Use a local normalized JSONL file instead of HuggingFace
+    python3 scripts/run_build_real_routing_dataset.py \\
+        --subset-size 100 \\
+        --gsm8k-data-file data/gsm8k_uploaded_normalized.jsonl
 
     # Custom model / output directory
     python3 scripts/run_build_real_routing_dataset.py \\
@@ -56,6 +62,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -112,6 +119,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Number of GSM8K test queries to process (default: 100)",
     )
     parser.add_argument(
+        "--gsm8k-data-file",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Optional path to a local GSM8K JSONL/JSON file "
+            "(e.g. data/gsm8k_uploaded_normalized.jsonl). "
+            "When provided, skips HuggingFace download and uses this file directly."
+        ),
+    )
+    parser.add_argument(
         "--model",
         default=_DEFAULT_MODEL,
         metavar="MODEL_NAME",
@@ -131,6 +148,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=str(_DEFAULT_OUTPUT_DIR),
         metavar="DIR",
         help=f"Output directory (default: {_DEFAULT_OUTPUT_DIR})",
+    )
+    parser.add_argument(
+        "--output-dataset-csv",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Optional additional output path for the routing dataset CSV "
+            "(e.g. data/real_gsm8k_routing_dataset.csv). "
+            "When provided, the CSV is copied to this path after writing."
+        ),
     )
     parser.add_argument(
         "--max-tokens",
@@ -188,8 +215,30 @@ def _check_api_key() -> str:
     return api_key
 
 
-def _load_queries(subset_size: int) -> list[Any]:
-    """Load queries from HuggingFace GSM8K, falling back to bundled sample."""
+def _load_queries(subset_size: int, gsm8k_data_file: str | None) -> list[Any]:
+    """Load queries from a local file, HuggingFace, or the bundled sample.
+
+    Priority order:
+    1. ``gsm8k_data_file`` (explicit local path, e.g. normalized JSONL)
+    2. HuggingFace download
+    3. Bundled sample fallback
+    """
+    # --- Explicit local file takes priority ---
+    if gsm8k_data_file is not None:
+        data_path = Path(gsm8k_data_file)
+        if not data_path.exists():
+            print(
+                f"\n[BLOCKED] --gsm8k-data-file not found: {data_path}\n"
+                "  Provide a valid path or omit the flag to use HuggingFace.\n",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print(f"[INFO] Loading {subset_size} queries from local file: {data_path}")
+        queries = load_gsm8k(split="test", max_samples=subset_size, data_file=data_path)
+        print(f"[INFO] Loaded {len(queries)} queries from local file.")
+        return queries
+
+    # --- HuggingFace with bundled fallback ---
     print(f"[INFO] Loading {subset_size} GSM8K test queries…")
     try:
         queries = load_gsm8k(split="test", max_samples=subset_size)
@@ -214,7 +263,7 @@ def _load_queries(subset_size: int) -> list[Any]:
             "  Ensure network access is available for the first run, or place\n"
             "  a local JSON file at:\n"
             f"    {_BUNDLED}\n"
-            "  with at least one record containing 'question' and 'answer' keys.\n",
+            "  or pass --gsm8k-data-file <path> to use a local file.\n",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -234,7 +283,7 @@ def main(argv: list[str] | None = None) -> None:
     _check_api_key()
 
     # --- Load queries ---
-    queries = _load_queries(args.subset_size)
+    queries = _load_queries(args.subset_size, args.gsm8k_data_file)
     if not queries:
         print("[BLOCKED] No queries loaded. Cannot proceed.", file=sys.stderr)
         sys.exit(1)
@@ -333,6 +382,13 @@ def main(argv: list[str] | None = None) -> None:
     rows = assemble_routing_dataset(queries, oracle_data=oracle_data)
     routing_paths = save_routing_dataset(rows, output_dir, oracle_data=oracle_data)
 
+    # --- Optional: copy CSV to secondary output path ---
+    if args.output_dataset_csv is not None:
+        dest = Path(args.output_dataset_csv)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(routing_paths["csv_path"], dest)
+        print(f"[INFO] Routing dataset also written to: {dest}")
+
     # --- Print final summary ---
     summary: dict[str, Any] = json.loads(
         Path(routing_paths["summary_path"]).read_text()
@@ -348,6 +404,8 @@ def main(argv: list[str] | None = None) -> None:
     print(f"  CSV output         : {routing_paths['csv_path']}")
     print(f"  Summary JSON       : {routing_paths['summary_path']}")
     print(f"  Oracle summary     : {oracle_summary_path}")
+    if args.output_dataset_csv is not None:
+        print(f"  Dataset CSV copy   : {args.output_dataset_csv}")
     print()
     print("Next step: evaluate a routing model on this dataset:")
     print(

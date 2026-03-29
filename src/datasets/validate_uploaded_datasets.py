@@ -9,6 +9,11 @@ from io import StringIO
 from pathlib import Path
 from zipfile import ZipFile
 
+try:  # pragma: no cover - dependency availability validated in integration tests
+    import pyarrow.parquet as pq
+except Exception:  # pragma: no cover
+    pq = None
+
 
 @dataclass(frozen=True)
 class ArchiveValidation:
@@ -75,6 +80,12 @@ def _load_member_records(zf: ZipFile, member_name: str, limit: int = 2000) -> li
                 break
         return rows
 
+    if lowered.endswith(".parquet") and pq is not None:
+        with zf.open(member_name) as handle:
+            table = pq.read_table(handle)
+        rows = table.to_pylist()
+        return [dict(r) for r in rows if isinstance(r, dict)][:limit]
+
     return []
 
 
@@ -88,7 +99,7 @@ def _extract_records_from_zip(zip_path: Path, per_file_limit: int = 300) -> tupl
             split = _guess_split(member)
             if split:
                 splits.add(split)
-            if not member.lower().endswith((".json", ".jsonl", ".csv")):
+            if not member.lower().endswith((".json", ".jsonl", ".csv", ".parquet")):
                 continue
             parsed = _load_member_records(zf, member, limit=per_file_limit)
             records.extend(parsed)
@@ -108,17 +119,24 @@ def _infer_dataset(records: list[dict], archive_name: str) -> tuple[str, str, bo
         )
 
     fields = {k for rec in records for k in rec.keys()}
+    fields_lower = {k.lower() for k in fields}
     lowered_name = archive_name.lower()
 
-    has_question = any(k in fields for k in ("question", "problem"))
-    has_answer = any(k in fields for k in ("answer", "gold_answer", "solution", "final_answer"))
+    has_question = any(k in fields_lower for k in ("question", "problem"))
+    has_answer = any(
+        k in fields_lower
+        for k in ("answer", "gold_answer", "solution", "final_answer", "solution_text")
+    )
 
-    sample_text = " ".join(
-        str(rec.get("question") or rec.get("problem") or "")[:400]
-        + " "
-        + str(rec.get("answer") or rec.get("solution") or "")[:200]
-        for rec in records[:40]
-    ).lower()
+    sample_chunks: list[str] = []
+    for rec in records[:40]:
+        lower_row = {str(k).lower(): v for k, v in rec.items()}
+        sample_chunks.append(
+            str(lower_row.get("question") or lower_row.get("problem") or "")[:400]
+            + " "
+            + str(lower_row.get("answer") or lower_row.get("solution") or "")[:200]
+        )
+    sample_text = " ".join(sample_chunks).lower()
 
     gsm_signals = sum(
         [
@@ -133,7 +151,8 @@ def _infer_dataset(records: list[dict], archive_name: str) -> tuple[str, str, bo
             int("math500" in lowered_name or "math-500" in lowered_name),
             int("boxed" in sample_text),
             int("\\frac" in sample_text or "\\" in sample_text),
-            int("problem" in fields and has_answer),
+            int("problem" in fields_lower and has_answer),
+            int("subject" in fields_lower or "level" in fields_lower),
         ]
     )
 
@@ -174,12 +193,20 @@ def validate_uploaded_archive(zip_path: str | Path) -> ArchiveValidation:
 
 
 def _normalize_row(row: dict, dataset: str, idx: int, prefix: str) -> dict | None:
+    lower_row = {str(k).lower(): v for k, v in row.items()}
+
     if dataset == "gsm8k":
-        question = str(row.get("question") or row.get("problem") or "").strip()
-        answer = str(row.get("gold_answer") or row.get("answer") or row.get("solution") or "").strip()
+        question = str(lower_row.get("question") or lower_row.get("problem") or "").strip()
+        answer = str(
+            lower_row.get("gold_answer")
+            or lower_row.get("answer")
+            or lower_row.get("solution")
+            or lower_row.get("final_answer")
+            or ""
+        ).strip()
         if not question or not answer:
             return None
-        qid = str(row.get("question_id") or row.get("id") or f"{prefix}_{idx}")
+        qid = str(lower_row.get("question_id") or lower_row.get("id") or f"{prefix}_{idx}")
         return {
             "question_id": qid,
             "question": question,
@@ -188,17 +215,23 @@ def _normalize_row(row: dict, dataset: str, idx: int, prefix: str) -> dict | Non
         }
 
     if dataset == "math500":
-        question = str(row.get("problem") or row.get("question") or "").strip()
+        question = str(lower_row.get("problem") or lower_row.get("question") or "").strip()
         answer = str(
-            row.get("gold_answer")
-            or row.get("final_answer")
-            or row.get("answer")
-            or row.get("solution")
+            lower_row.get("gold_answer")
+            or lower_row.get("final_answer")
+            or lower_row.get("answer")
+            or lower_row.get("solution")
+            or lower_row.get("solution_text")
             or ""
         ).strip()
         if not question or not answer:
             return None
-        qid = str(row.get("question_id") or row.get("unique_id") or row.get("id") or f"{prefix}_{idx}")
+        qid = str(
+            lower_row.get("question_id")
+            or lower_row.get("unique_id")
+            or lower_row.get("id")
+            or f"{prefix}_{idx}"
+        )
         return {
             "question_id": qid,
             "question": question,

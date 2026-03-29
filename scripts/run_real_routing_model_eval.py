@@ -20,7 +20,7 @@ Usage
     # Default paths (output of run_build_real_routing_dataset.py)
     python3 scripts/run_real_routing_model_eval.py
 
-    # Custom routing CSV
+    # Custom routing CSV (--routing-csv or the legacy --dataset-csv alias)
     python3 scripts/run_real_routing_model_eval.py \\
         --routing-csv outputs/real_routing_dataset/routing_dataset.csv
 
@@ -83,11 +83,21 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--routing-csv",
-        default=str(_DEFAULT_ROUTING_CSV),
+        default=None,
         metavar="PATH",
         help=(
             f"Path to the real routing dataset CSV "
             f"(default: {_DEFAULT_ROUTING_CSV})"
+        ),
+    )
+    # Legacy alias from origin/main — accepted for backward compatibility.
+    parser.add_argument(
+        "--dataset-csv",
+        default=None,
+        metavar="PATH",
+        help=(
+            "Alias for --routing-csv (for backward compatibility). "
+            "If both are provided, --routing-csv takes precedence."
         ),
     )
     parser.add_argument(
@@ -113,7 +123,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
-    routing_csv_path = Path(args.routing_csv)
+
+    # Resolve CSV path: --routing-csv wins; fall back to --dataset-csv, then default.
+    raw_csv = args.routing_csv or args.dataset_csv or str(_DEFAULT_ROUTING_CSV)
+    routing_csv_path = Path(raw_csv)
     output_dir = Path(args.output_dir)
 
     # --- Guard: routing CSV must exist ---

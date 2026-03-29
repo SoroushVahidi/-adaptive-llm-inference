@@ -4,6 +4,11 @@ import json
 from pathlib import Path
 from zipfile import ZipFile
 
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+from src.datasets.gsm8k import load_gsm8k
+from src.datasets.math500 import load_math500
 from src.datasets.validate_uploaded_datasets import (
     find_uploaded_zip_files,
     normalize_valid_archive,
@@ -15,6 +20,14 @@ from src.datasets.validate_uploaded_datasets import (
 def _write_zip(path: Path, member_name: str, payload: str) -> None:
     with ZipFile(path, "w") as zf:
         zf.writestr(member_name, payload)
+
+
+def _write_parquet_zip(path: Path, member_name: str, rows: list[dict]) -> None:
+    table = pa.Table.from_pylist(rows)
+    parquet_path = path.with_suffix(".parquet")
+    pq.write_table(table, parquet_path)
+    with ZipFile(path, "w") as zf:
+        zf.write(parquet_path, arcname=member_name)
 
 
 def test_find_uploaded_zip_files_detects_zip(tmp_path) -> None:
@@ -64,6 +77,60 @@ def test_validate_math500_archive_and_normalize(tmp_path) -> None:
     assert out["num_rows"] == 1
     one = json.loads((tmp_path / "math500_uploaded_normalized.jsonl").read_text().strip())
     assert one["answer_mode"] == "math"
+
+
+def test_validate_gsm8k_parquet_archive(tmp_path) -> None:
+    rows = [{"question": "A has 1, gets 1.", "answer": "2"}]
+    zip_path = tmp_path / "gsm8k_archive.zip"
+    _write_parquet_zip(zip_path, "gsm8k/main/test-00000-of-00001.parquet", rows)
+
+    val = validate_uploaded_archive(zip_path)
+    assert val.valid_gsm8k is True
+    assert val.inferred_dataset == "gsm8k"
+
+
+def test_validate_math500_uppercase_csv_archive(tmp_path) -> None:
+    csv_payload = "Question,Answer\n\"Solve x+1=2\",\"x=\\boxed{1}\"\n"
+    zip_path = tmp_path / "archive_math.zip"
+    _write_zip(zip_path, "math_500_test.csv", csv_payload)
+
+    val = validate_uploaded_archive(zip_path)
+    assert val.valid_math500 is True
+    assert val.inferred_dataset == "math500"
+
+
+def test_loader_compatibility_with_normalized_jsonl(tmp_path) -> None:
+    gsm_path = tmp_path / "gsm.jsonl"
+    gsm_path.write_text(
+        json.dumps(
+            {
+                "question_id": "g-1",
+                "question": "Two plus two?",
+                "gold_answer": "4",
+                "answer_mode": "numeric",
+            }
+        )
+        + "\n"
+    )
+    math_path = tmp_path / "math.jsonl"
+    math_path.write_text(
+        json.dumps(
+            {
+                "question_id": "m-1",
+                "question": "What is 1/2+1/2?",
+                "gold_answer": r"\boxed{1}",
+                "answer_mode": "math",
+            }
+        )
+        + "\n"
+    )
+    gsm_queries = load_gsm8k(data_file=gsm_path)
+    math_queries = load_math500(data_file=math_path)
+
+    assert gsm_queries[0].id == "g-1"
+    assert gsm_queries[0].answer == "4"
+    assert math_queries[0].id == "m-1"
+    assert math_queries[0].answer == "1"
 
 
 def test_invalid_archive_graceful_failure(tmp_path) -> None:
