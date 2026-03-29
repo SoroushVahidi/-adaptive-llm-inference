@@ -18,6 +18,7 @@ __all__ = [
     "load_gsm8k",
     "load_math500",
     "load_aime2024",
+    "load_aime2024_hf",
     "load_gpqa_diamond",
     "OracleData",
     "load_oracle_files",

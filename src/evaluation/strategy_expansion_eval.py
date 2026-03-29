@@ -15,9 +15,13 @@ import json
 from collections import Counter
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
-from src.utils.answer_extraction import extract_numeric_answer
+from src.utils.answer_extraction import (
+    extract_math_answer,
+    extract_numeric_answer,
+    normalize_math_answer,
+)
 
 # ---------------------------------------------------------------------------
 # Typing shim – we only need generate / generate_n from any model object
@@ -61,6 +65,16 @@ _REVISE_SYSTEM = (
     "You are reviewing your own answer to a math question. "
     "If you see an error, provide the corrected numeric answer on the last line as "
     "'Final answer: <number>'. If the answer is fine, repeat it as 'Final answer: <number>'."
+)
+
+_REASONING_THEN_REVISE_CHECK = (
+    "Check the reasoning and final answer carefully. If incorrect, fix it. "
+    "If correct, return the same answer."
+)
+
+# Aligns with ``oracle_subset_eval.REASONING_GREEDY_PROMPT`` for numeric GSM8K-style runs.
+_REASONING_THEN_REVISE_STEP1_USER = (
+    "Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
 )
 
 
@@ -119,6 +133,48 @@ def run_reasoning_best_of_3(
         "raw_outputs": raws,
         "predicted_answer": final,
         "samples_used": 3,
+    }
+
+
+def run_self_consistency_reasoning_n_numeric(
+    model: _ModelProtocol,
+    question: str,
+    n: int,
+) -> dict[str, Any]:
+    """N reasoning samples (numeric final), majority vote."""
+    prompt = f"Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
+    raws = model.generate_n(prompt, n)
+    answers = [_normalize(extract_numeric_answer(r)) for r in raws]
+    final = _majority_vote(answers)
+    return {
+        "raw_outputs": raws,
+        "predicted_answer": final,
+        "samples_used": n,
+    }
+
+
+def run_self_consistency_reasoning_n_math(
+    model: _ModelProtocol,
+    question: str,
+    n: int,
+) -> dict[str, Any]:
+    """N reasoning samples with MATH-style finals, majority vote on normalized math."""
+    prompt = (
+        "Solve this step by step. Put your final answer in \\boxed{...} "
+        "or end with 'Final answer: ...'.\n\n"
+        f"{question}"
+    )
+    raws = model.generate_n(prompt, n)
+    answers: list[str] = []
+    for r in raws:
+        parsed = extract_math_answer(r).strip()
+        answers.append(normalize_math_answer(parsed) if parsed else "")
+    nonempty = [a for a in answers if a]
+    final = _majority_vote(nonempty) if nonempty else ""
+    return {
+        "raw_outputs": raws,
+        "predicted_answer": final,
+        "samples_used": n,
     }
 
 
@@ -255,6 +311,104 @@ def run_direct_plus_revise(
     }
 
 
+def _final_from_model_output(text: str) -> str:
+    """Prefer MATH-style extraction, fall back to numeric."""
+    parsed = extract_math_answer(text).strip()
+    if parsed:
+        return normalize_math_answer(parsed)
+    return _normalize(extract_numeric_answer(text))
+
+
+def run_reasoning_then_revise(
+    model: _ModelProtocol,
+    question: str,
+    *,
+    revise_model: _ModelProtocol | None = None,
+) -> dict[str, Any]:
+    """Reasoning pass then a second pass that sees question + full reasoning.
+
+    Step 1: one chain-of-thought style generation (uses *model*'s system prefix).
+    Step 2: verifier prompt with original question and the full reasoning output;
+    uses *revise_model* when provided, else ``model.with_prompt_prefix`` when
+    available, else the same *model* (weaker: shared system prefix).
+    """
+    reasoning_raw = model.generate(_REASONING_THEN_REVISE_STEP1_USER.format(question=question))
+    reasoning_answer = _final_from_model_output(reasoning_raw)
+
+    revise_user = (
+        f"Question:\n{question}\n\n"
+        f"Reasoning and draft answer:\n{reasoning_raw}\n\n"
+        f"{_REASONING_THEN_REVISE_CHECK}\n"
+        "End with a clear final answer using 'Final answer: ...' or \\boxed{{...}}."
+    )
+
+    mrev: _ModelProtocol
+    if revise_model is not None:
+        mrev = revise_model
+    else:
+        wm = getattr(model, "with_prompt_prefix", None)
+        if callable(wm):
+            mrev = wm(
+                "You verify step-by-step math reasoning. "
+                "Check the reasoning and final answer carefully. If incorrect, fix it. "
+                "If correct, return the same answer."
+            )
+        else:
+            mrev = model
+
+    revised_raw = mrev.generate(revise_user)
+    revised_answer = _final_from_model_output(revised_raw)
+    if not revised_answer:
+        revised_answer = reasoning_answer
+
+    return {
+        "raw_outputs": [reasoning_raw, revised_raw],
+        "predicted_answer": revised_answer,
+        "samples_used": 2,
+        "first_answer": reasoning_answer,
+        "revised_answer": revised_answer,
+        "reasoning_raw": reasoning_raw,
+    }
+
+
+def run_reasoning_then_revise_review_only(
+    revise_model: _ModelProtocol,
+    question: str,
+    prior_reasoning_raw: str,
+    *,
+    mode: Literal["numeric", "math"] = "numeric",
+) -> dict[str, Any]:
+    """Second stage only: reuse a frozen reasoning trace from an earlier run."""
+    revise_user = (
+        f"Question:\n{question}\n\n"
+        f"Reasoning and draft answer:\n{prior_reasoning_raw}\n\n"
+        f"{_REASONING_THEN_REVISE_CHECK}\n"
+        "End with a clear final answer using 'Final answer: ...' or \\boxed{{...}}."
+    )
+    revised_raw = revise_model.generate(revise_user)
+    if mode == "math":
+        parsed = extract_math_answer(revised_raw).strip()
+        revised_answer = normalize_math_answer(parsed) if parsed else ""
+    else:
+        revised_answer = _normalize(extract_numeric_answer(revised_raw))
+    prior_ans = (
+        normalize_math_answer(extract_math_answer(prior_reasoning_raw).strip() or "")
+        if mode == "math"
+        else _normalize(extract_numeric_answer(prior_reasoning_raw))
+    )
+    if not revised_answer:
+        revised_answer = prior_ans
+
+    return {
+        "raw_outputs": [revised_raw],
+        "predicted_answer": revised_answer,
+        "samples_used": 1,
+        "first_answer": prior_ans,
+        "revised_answer": revised_answer,
+        "reasoning_raw": prior_reasoning_raw,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Per-query runner dispatcher
 # ---------------------------------------------------------------------------
@@ -267,6 +421,7 @@ _STRATEGY_RUNNERS = {
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
     "direct_plus_revise": run_direct_plus_revise,
+    "reasoning_then_revise": run_reasoning_then_revise,
 }
 
 ALL_STRATEGIES = list(_STRATEGY_RUNNERS.keys())

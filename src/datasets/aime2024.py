@@ -1,20 +1,26 @@
-"""AIME 2024 loader (HuggingFace canonical + optional normalized JSONL cache)."""
+"""AIME 2024 loaders (HuggingFace + optional normalized JSONL cache).
+
+Primary HF source: ``HuggingFaceH4/aime_2024``.  Routing scripts on main use
+``load_aime2024_hf``; the strong-baselines runner uses ``load_aime2024`` (JSONL
+export + optional local files).
+"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Optional
 
 from datasets import load_dataset
 from src.datasets.gsm8k import Query
+from src.utils.answer_extraction import normalize_math_answer
 
-# Primary public source (30 problems, 2024)
 DEFAULT_HF_SOURCE = "HuggingFaceH4/aime_2024"
 DEFAULT_JSONL_REL = Path("data/aime_2024_normalized.jsonl")
 
 
 def _row_to_record(ex: dict) -> dict[str, str]:
-    """Map HF row to normalized {question, answer} (numeric string)."""
+    """Map HF row to normalized {question, answer} (numeric / math string)."""
     q = str(ex.get("problem") or ex.get("Problem") or "").strip()
     ans = ex.get("answer")
     if ans is None:
@@ -42,10 +48,11 @@ def load_aime2024(
     jsonl_path: str | Path | None = DEFAULT_JSONL_REL,
     data_file: str | Path | None = None,
 ) -> list[Query]:
-    """Load AIME 2024 as ``Query`` objects (numeric gold in ``answer``).
+    """Load AIME 2024 as ``Query`` objects; gold ``answer`` is math-normalized.
 
     If ``data_file`` is set, load JSON array or JSONL with ``question``/``answer``.
-    Otherwise load from HuggingFace and optionally write ``jsonl_path``.
+    Otherwise load from HuggingFace and optionally write ``jsonl_path`` (pass
+    ``jsonl_path=None`` to skip writing).
     """
     if data_file is not None:
         p = Path(data_file)
@@ -65,11 +72,15 @@ def load_aime2024(
             if max_samples is not None and idx >= max_samples:
                 break
             qid = str(rec.get("id") or rec.get("question_id") or f"aime2024_{idx}")
+            qtext = str(rec["question"]).strip()
+            raw_ans = str(rec["answer"]).strip()
+            if not qtext or not raw_ans:
+                continue
             out.append(
                 Query(
                     id=qid,
-                    question=str(rec["question"]),
-                    answer=str(rec["answer"]).strip(),
+                    question=qtext,
+                    answer=normalize_math_answer(raw_ans),
                     choices=None,
                 )
             )
@@ -83,12 +94,14 @@ def load_aime2024(
         norm_rows.append(rec)
         if max_samples is not None and idx >= max_samples:
             continue
+        if not rec["question"] or not rec["answer"]:
+            continue
         qid = str(dict(ex).get("id") or dict(ex).get("ID") or f"aime2024_{split}_{idx}")
         queries.append(
             Query(
                 id=qid,
                 question=rec["question"],
-                answer=rec["answer"],
+                answer=normalize_math_answer(rec["answer"]),
                 choices=None,
             )
         )
@@ -97,3 +110,20 @@ def load_aime2024(
         write_aime2024_normalized_jsonl(norm_rows, jsonl_path)
 
     return queries
+
+
+def load_aime2024_hf(
+    max_samples: Optional[int] = None,
+    cache_dir: str = "data",
+    dataset_id: str = "HuggingFaceH4/aime_2024",
+    split: str = "train",
+) -> list[Query]:
+    """Load AIME rows from HF; same normalization as ``load_aime2024`` (no JSONL write)."""
+    return load_aime2024(
+        max_samples=max_samples,
+        cache_dir=cache_dir,
+        hf_source=dataset_id,
+        split=split,
+        jsonl_path=None,
+        data_file=None,
+    )

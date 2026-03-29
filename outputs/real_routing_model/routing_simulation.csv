@@ -1,0 +1,10 @@
+route,accuracy,avg_cost,revise_rate
+decision_tree,0.9,1.03,0.03
+bagging_trees,0.9,1.02,0.02
+boosting_shallow_trees,0.9,1.02,0.02
+reasoning_greedy,0.9,1.0,0.0
+direct_plus_revise,0.92,2.0,1.0
+heuristic_calibrated_role,0.9,1.0,0.0
+heuristic_unified_error,0.9,1.0,0.0
+heuristic_v6_revise_column,0.92,1.18,0.18
+heuristic_v7_revise_column,0.92,1.3,0.3

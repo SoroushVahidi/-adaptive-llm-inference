@@ -1,0 +1,89 @@
+{
+  "dataset": "gsm8k_random100",
+  "oracle": {
+    "accuracy": 0.92,
+    "avg_cost": 1.02,
+    "revise_rate": 0.02,
+    "n": 100
+  },
+  "budget_curve": [
+    {
+      "target_avg_cost": 1.0,
+      "achieved_avg_cost": 1.0,
+      "revise_rate": 0.0,
+      "accuracy": 0.9
+    },
+    {
+      "target_avg_cost": 1.1,
+      "achieved_avg_cost": 1.1,
+      "revise_rate": 0.1,
+      "accuracy": 0.92
+    },
+    {
+      "target_avg_cost": 1.2,
+      "achieved_avg_cost": 1.2,
+      "revise_rate": 0.2,
+      "accuracy": 0.92
+    },
+    {
+      "target_avg_cost": 1.3,
+      "achieved_avg_cost": 1.3,
+      "revise_rate": 0.3,
+      "accuracy": 0.92
+    },
+    {
+      "target_avg_cost": 1.5,
+      "achieved_avg_cost": 1.5,
+      "revise_rate": 0.5,
+      "accuracy": 0.92
+    },
+    {
+      "target_avg_cost": 2.0,
+      "achieved_avg_cost": 2.0,
+      "revise_rate": 1.0,
+      "accuracy": 0.92
+    }
+  ],
+  "cascade_sample": [
+    {
+      "threshold": 0.15,
+      "accuracy": 0.9,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0
+    },
+    {
+      "threshold": 0.25,
+      "accuracy": 0.9,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0
+    },
+    {
+      "threshold": 0.35,
+      "accuracy": 0.91,
+      "avg_cost": 1.03,
+      "revise_rate": 0.03
+    },
+    {
+      "threshold": 0.45,
+      "accuracy": 0.91,
+      "avg_cost": 1.05,
+      "revise_rate": 0.05
+    },
+    {
+      "threshold": 0.55,
+      "accuracy": 0.91,
+      "avg_cost": 1.05,
+      "revise_rate": 0.05
+    },
+    {
+      "threshold": 0.65,
+      "accuracy": 0.92,
+      "avg_cost": 1.11,
+      "revise_rate": 0.11
+    }
+  ],
+  "best_v6_v7_policy": "adaptive_policy_v6",
+  "best_v6_v7_accuracy": 0.92,
+  "best_v6_v7_cost": 1.18,
+  "reasoning_then_revise_accuracy": 0.93
+}
