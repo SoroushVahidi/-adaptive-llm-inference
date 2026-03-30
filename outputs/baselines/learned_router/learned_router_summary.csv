@@ -1,0 +1,9 @@
+regime,baseline,accuracy,avg_cost,revise_rate,cv_folds,degenerate,n,note
+gsm8k_random_100,learned_router_logistic_regression,0.9,1.03,0.03,2,False,100,non-stratified CV due to low positive count (2)
+gsm8k_random_100,learned_router_decision_tree,0.9,1.0,0.0,2,True,100,degenerate: all predictions are the same class
+hard_gsm8k_100,learned_router_logistic_regression,0.87,1.2,0.2,5,False,100,
+hard_gsm8k_100,learned_router_decision_tree,0.84,1.12,0.12,5,False,100,
+hard_gsm8k_b2,learned_router_logistic_regression,0.87,1.1400000000000001,0.14,5,False,100,
+hard_gsm8k_b2,learned_router_decision_tree,0.88,1.1,0.1,5,False,100,
+math500_100,learned_router_logistic_regression,0.65,1.1,0.1,5,False,100,
+math500_100,learned_router_decision_tree,0.63,1.05,0.05,5,False,100,

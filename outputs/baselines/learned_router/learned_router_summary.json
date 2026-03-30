@@ -1,0 +1,90 @@
+[
+  {
+    "regime": "gsm8k_random_100",
+    "model_name": "logistic_regression",
+    "accuracy": 0.9,
+    "avg_cost": 1.03,
+    "revise_rate": 0.03,
+    "cv_folds": 2,
+    "degenerate": false,
+    "n": 100,
+    "note": "non-stratified CV due to low positive count (2)"
+  },
+  {
+    "regime": "gsm8k_random_100",
+    "model_name": "decision_tree",
+    "accuracy": 0.9,
+    "avg_cost": 1.0,
+    "revise_rate": 0.0,
+    "cv_folds": 2,
+    "degenerate": true,
+    "n": 100,
+    "note": "degenerate: all predictions are the same class"
+  },
+  {
+    "regime": "hard_gsm8k_100",
+    "model_name": "logistic_regression",
+    "accuracy": 0.87,
+    "avg_cost": 1.2,
+    "revise_rate": 0.2,
+    "cv_folds": 5,
+    "degenerate": false,
+    "n": 100,
+    "note": ""
+  },
+  {
+    "regime": "hard_gsm8k_100",
+    "model_name": "decision_tree",
+    "accuracy": 0.84,
+    "avg_cost": 1.12,
+    "revise_rate": 0.12,
+    "cv_folds": 5,
+    "degenerate": false,
+    "n": 100,
+    "note": ""
+  },
+  {
+    "regime": "hard_gsm8k_b2",
+    "model_name": "logistic_regression",
+    "accuracy": 0.87,
+    "avg_cost": 1.1400000000000001,
+    "revise_rate": 0.14,
+    "cv_folds": 5,
+    "degenerate": false,
+    "n": 100,
+    "note": ""
+  },
+  {
+    "regime": "hard_gsm8k_b2",
+    "model_name": "decision_tree",
+    "accuracy": 0.88,
+    "avg_cost": 1.1,
+    "revise_rate": 0.1,
+    "cv_folds": 5,
+    "degenerate": false,
+    "n": 100,
+    "note": ""
+  },
+  {
+    "regime": "math500_100",
+    "model_name": "logistic_regression",
+    "accuracy": 0.65,
+    "avg_cost": 1.1,
+    "revise_rate": 0.1,
+    "cv_folds": 5,
+    "degenerate": false,
+    "n": 100,
+    "note": ""
+  },
+  {
+    "regime": "math500_100",
+    "model_name": "decision_tree",
+    "accuracy": 0.63,
+    "avg_cost": 1.05,
+    "revise_rate": 0.05,
+    "cv_folds": 5,
+    "degenerate": false,
+    "n": 100,
+    "note": ""
+  }
+]

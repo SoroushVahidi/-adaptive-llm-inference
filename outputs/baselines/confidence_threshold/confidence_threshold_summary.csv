@@ -1,0 +1,5 @@
+regime,baseline,threshold,accuracy,avg_cost,revise_rate,n
+gsm8k_random_100,confidence_threshold,0.65,0.92,1.11,0.11,100
+hard_gsm8k_100,confidence_threshold,0.4,0.89,1.13,0.13,100
+hard_gsm8k_b2,confidence_threshold,0.4,0.89,1.09,0.09,100
+math500_100,confidence_threshold,0.25,0.66,1.06,0.06,100
