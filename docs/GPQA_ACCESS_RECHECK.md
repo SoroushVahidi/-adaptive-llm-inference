@@ -40,11 +40,10 @@ load_dataset("Idavidrein/gpqa", "gpqa_diamond", split="train[:2]")
 - **Config:** **`gpqa_diamond`**
 - **Split:** **`train`** (only split observed for this config in `datasets`)
 - **Rows:** **198**
-- **Columns:** 78 fields; MC stem/answers use at least:
-  - **`Question`** — full multiple-choice prompt (options embedded in text)
-  - **`Correct Answer`** — **string** (e.g. numeric/scientific answer text, **not** a letter A–D in the spot-checked row)
-  - **`Incorrect Answer 1`**, **`Incorrect Answer 2`**, **`Incorrect Answer 3`**
-- **Correct answer representation:** explicit **`Correct Answer`** column vs three incorrect columns; distractors and wording live in **`Question`** as well.
+- **Columns:** 78 fields; the four options are always in dedicated columns:
+  - **`Question`** — stem (sometimes includes inline `a)`…`d)` lines; often **no** `(A)`…`(D)` block—options are only in the columns below)
+  - **`Correct Answer`**, **`Incorrect Answer 1`**, **`Incorrect Answer 2`**, **`Incorrect Answer 3`** — the four choices as text (correct is always the first column in this schema)
+- **Gold for normalization:** index **0** into `(Correct, Incorrect 1–3)`; see §5 for semantics vs exam letter order.
 
 ## 4. Fallback `hendrydong/gpqa_diamond_mc` (still works)
 
@@ -57,13 +56,40 @@ load_dataset("hendrydong/gpqa_diamond_mc", split="test[:2]")
 - **Columns:** `problem`, `solution`, `domain`
 - **Spot check:** same opening text as official **`Question`**; **`solution`** was **`\\boxed{D}`** (letter-in-box), vs official **`Correct Answer`** as **answer string** (e.g. `10^-4 eV`).
 
-## 5. Repo integration (updated)
+## 5. Repo integration (official-first, mirror optional)
 
-**Implemented:** `src/datasets/gpqa.py` loads **`Idavidrein/gpqa`** with **`gpqa_diamond`** / **`train`** by default. You must pass that **config name** (`load_dataset("Idavidrein/gpqa")` without config still raises `ValueError`).
+**Implemented:** `src/datasets/gpqa.py` loads **`Idavidrein/gpqa`**, **`gpqa_diamond`**, **`train`** by default. You must pass that **config name** (`load_dataset("Idavidrein/gpqa")` without config still raises `ValueError`).
 
-**Normalization:** The official `Question` field often lacks a clean `(A)`…`(D)` block (and `Correct Answer` may be a short digit vs full option text). The loader therefore **also reads** `hendrydong/gpqa_diamond_mc` when the official set loads, to recover the final A–D option block and `\\boxed{letter}` gold; it **permutes** mirror options to match official `Correct Answer` / incorrect columns and checks the boxed letter. If the official Hub load fails entirely, it falls back to **mirror-only** parsing.
+### Official-only normalization (default path)
 
-**Cached export:** `data/gpqa_diamond_normalized.jsonl` (198 lines) — gitignored except for an explicit `!data/gpqa_diamond_normalized.jsonl` entry. Regenerate with `write_normalized_gpqa_jsonl()` or `python3 -c "from src.datasets.gpqa import write_normalized_gpqa_jsonl; write_normalized_gpqa_jsonl()"`.
+The Hub schema is sufficient **without** the mirror:
+
+| Field | Role |
+|-------|------|
+| `Question` | Prompt stem (often without `(A)`…`(D)` lines) |
+| `Correct Answer` | Gold option text (first of four) |
+| `Incorrect Answer 1` … `3` | Three distractors |
+
+Normalized output:
+
+- `choices = (Correct Answer, Incorrect 1, Incorrect 2, Incorrect 3)`
+- `answer = 0` **always** on the official path (gold is index 0)
+
+This is **not** the same as “which letter was (A) on the exam”: the release does not shuffle letters in the CSV. For letter-randomized evaluation, shuffle `choices` in experiment code and remap `answer` with a fixed seed.
+
+### Fallback mirror
+
+`hendrydong/gpqa_diamond_mc` / `test` is used **only** if the official dataset fails to load (`prefer_official=False` or Hub error). It parses `(A)`…`(D)` and `\\boxed{letter}`; `answer` is then 0–3 in **A–D presentation order**.
+
+### Row count and schema drift
+
+The loader requires **exactly 198** rows on both splits. If the count changes, normalization **raises** (do not silently continue).
+
+### Optional alignment audit (tests)
+
+`verify_official_mirror_dataset_pair(official, mirror)` loads nothing by itself; pass two `datasets` splits. It asserts equal length, prefix alignment of `Question` vs mirror stem, that the official correct string appears among mirror options, and that the mirror `\\boxed{}` letter matches that slot. Use when both Hub sources are reachable to detect **row reordering** or content drift between releases.
+
+**Cached export:** `data/gpqa_diamond_normalized.jsonl` (198 lines) — tracked via `!data/gpqa_diamond_normalized.jsonl` in `.gitignore`. Regenerate with `write_normalized_gpqa_jsonl()`.
 
 ## 6. If access had still failed
 
