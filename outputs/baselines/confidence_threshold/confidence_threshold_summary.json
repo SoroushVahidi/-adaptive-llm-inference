@@ -1,0 +1,38 @@
+[
+  {
+    "regime": "gsm8k_random_100",
+    "operating_threshold": 0.65,
+    "accuracy": 0.92,
+    "avg_cost": 1.11,
+    "revise_rate": 0.11,
+    "n": 100,
+    "sweep": null
+  },
+  {
+    "regime": "hard_gsm8k_100",
+    "operating_threshold": 0.4,
+    "accuracy": 0.89,
+    "avg_cost": 1.13,
+    "revise_rate": 0.13,
+    "n": 100,
+    "sweep": null
+  },
+  {
+    "regime": "hard_gsm8k_b2",
+    "operating_threshold": 0.4,
+    "accuracy": 0.89,
+    "avg_cost": 1.09,
+    "revise_rate": 0.09,
+    "n": 100,
+    "sweep": null
+  },
+  {
+    "regime": "math500_100",
+    "operating_threshold": 0.25,
+    "accuracy": 0.66,
+    "avg_cost": 1.06,
+    "revise_rate": 0.06,
+    "n": 100,
+    "sweep": null
+  }
+]
