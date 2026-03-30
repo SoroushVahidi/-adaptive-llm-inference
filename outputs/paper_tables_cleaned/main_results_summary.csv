@@ -1,0 +1,5 @@
+dataset,reasoning_acc,revise_acc,best_policy_acc,best_policy_cost,oracle_acc,revise_helpful_rate
+hard_gsm8k_100,0.79,0.86,0.82,1.46,0.91,0.12
+hard_gsm8k_b2,0.83,0.91,0.91,1.41,0.92,0.09
+math500_100,0.64,0.64,0.65,1.03,0.7,0.06
+gsm8k_random_100,0.9,0.92,0.92,1.18,0.92,0.02
