@@ -104,6 +104,8 @@ outputs/*
 !outputs/paper_tables_cleaned/**
 !outputs/paper_figures_cleaned/
 !outputs/paper_figures_cleaned/**
+!outputs/paper_export/
+!outputs/paper_export/**
 
 ### Legacy results folder ###
 results/

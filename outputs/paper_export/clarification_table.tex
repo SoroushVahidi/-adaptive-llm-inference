@@ -1,0 +1,57 @@
+% clarification_table.tex
+% Manuscript-ready combined table: policy comparison, oracle routing, and budget frontier.
+% Source: outputs/paper_export/clarification_table.csv
+% All values drawn from existing artifacts; no new experiments were run.
+%
+% Intended placement: main results section or standalone supplementary table.
+% Recommended caption text is provided below.
+
+\begin{table*}[ht]
+\centering
+\caption{%
+  Per-regime summary combining the three result types reported in this paper.
+  \textbf{Reasoning acc.}~and \textbf{Revise acc.}~are fixed-strategy baselines.
+  The \textbf{Best adaptive policy} columns report the deployed routing policy with the
+  highest accuracy on each 100-query evaluation slice (policy name, accuracy, avg.\ cost).
+  \textbf{Oracle} columns report the theoretical upper bound achievable only with
+  hindsight knowledge of per-instance revision benefit (not deployable).
+  \textbf{Budget frontier} columns report the best accuracy achievable at exactly
+  10\,\% (cost~1.1) and 20\,\% (cost~1.2) cost overhead over greedy, computed by
+  ranking queries by revision priority---a sweep-style analysis, not a single trained policy.
+  $n = 100$ per regime; model: gpt-4o-mini; binary revise routing.
+}
+\label{tab:clarification}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcccccccccc}
+\toprule
+ & \multicolumn{2}{c}{\textbf{Fixed strategies}} &
+   \multicolumn{3}{c}{\textbf{Best adaptive policy}} &
+   \multicolumn{2}{c}{\textbf{Oracle (upper bound)}} &
+   \multicolumn{2}{c}{\textbf{Budget frontier}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-6}\cmidrule(lr){7-8}\cmidrule(lr){9-10}
+\textbf{Dataset / Regime} &
+  Reasoning & Revise &
+  Policy name & Acc. & Avg.\ cost &
+  Acc. & Avg.\ cost &
+  cost 1.1 & cost 1.2 \\
+\midrule
+Hard GSM8K \#1       & 0.79 & 0.86 & v7 & 0.82 & 1.46 & 0.91 & 1.12 & 0.89 & 0.91 \\
+Hard GSM8K \#2 (B2)  & 0.83 & 0.91 & v5 & 0.91 & 1.41 & 0.92 & 1.09 & 0.92 & 0.92 \\
+MATH-500             & 0.64 & 0.64 & v6 & 0.65 & 1.03 & 0.70 & 1.06 & 0.70 & 0.70 \\
+GSM8K Easy           & 0.90 & 0.92 & v6 & 0.92 & 1.18 & 0.92 & 1.02 & 0.92 & 0.92 \\
+\bottomrule
+\end{tabular}
+\bigskip
+
+\noindent\textbf{Notes.}
+\textit{Practical policy vs.\ budget frontier:}
+The ``Best adaptive policy'' is a single trained routing policy with a fixed threshold,
+deployable at inference time without oracle knowledge.
+The ``Budget frontier'' values are from a sweep analysis that picks the revision fraction
+retrospectively to match each target cost level---they show the Pareto-optimal accuracy
+for that budget but are \emph{not} the same operating point as the practical policy.
+\textit{Oracle:}
+The oracle result requires knowing in hindsight whether revision helps each individual query;
+it is an upper bound on what any deployable policy can achieve, not a practical system.
+\end{table*}
