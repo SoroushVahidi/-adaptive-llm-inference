@@ -39,10 +39,11 @@ from src.evaluation.strategy_expansion_eval import (
     run_direct_plus_verify,
     run_reasoning_best_of_3,
     run_reasoning_then_revise,
+    run_self_consistency_3,
     run_structured_sampling_3,
 )
 from src.models.openai_llm import OpenAILLMModel
-from src.utils.answer_extraction import extract_numeric_answer
+from src.utils.answer_extraction import extract_mc_answer, extract_numeric_answer
 
 # ---------------------------------------------------------------------------
 # Typing shim
@@ -78,6 +79,7 @@ STRATEGY_COST_PROXY: dict[str, int] = {
     "direct_plus_verify": 2,      # direct + verify
     "direct_plus_revise": 2,      # direct + revise
     "reasoning_then_revise": 2,   # reasoning + review/revise pass
+    "self_consistency_3": 3,      # 3 reasoning samples + vote
     "direct_plus_critique_plus_final": 3,  # direct + critique + final
     "first_pass_then_hint_guided_reason": 2,  # first pass + hint-guided
     "strong_direct": 1,           # 1 call on the strong model
@@ -91,12 +93,13 @@ _ORACLE_RUNNERS: dict[str, Any] = {
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
     "direct_plus_revise": run_direct_plus_revise,
+    "reasoning_then_revise": run_reasoning_then_revise,
+    "self_consistency_3": run_self_consistency_3,
     "direct_plus_critique_plus_final": run_direct_plus_critique_plus_final,
     "first_pass_then_hint_guided_reason": run_first_pass_then_hint_guided_reason,
     # strong_direct uses the same runner as direct_greedy but with a different
     # model object that the caller supplies separately.
     "strong_direct": run_direct_greedy,
-    "reasoning_then_revise": run_reasoning_then_revise,
 }
 
 CORE_ORACLE_STRATEGIES: list[str] = [
@@ -108,6 +111,14 @@ CORE_ORACLE_STRATEGIES: list[str] = [
     "reasoning_then_revise",
     "direct_plus_critique_plus_final",
     "first_pass_then_hint_guided_reason",
+]
+
+# Multi-action supervised routing (narrow action set for learned controllers).
+MULTI_ACTION_ORACLE_STRATEGIES: list[str] = [
+    "reasoning_greedy",
+    "direct_plus_revise",
+    "reasoning_then_revise",
+    "self_consistency_3",
 ]
 
 
@@ -127,10 +138,24 @@ def _normalize(value: str) -> str:
     return normalized or "0"
 
 
-def run_reasoning_greedy(model: Any, question: str) -> dict[str, Any]:
+def run_reasoning_greedy(
+    model: Any,
+    question: str,
+    answer_mode: str = "numeric",
+) -> dict[str, Any]:
     """One reasoning-style sample with the current model."""
-    raw = model.generate(REASONING_GREEDY_PROMPT.format(question=question))
-    answer = _normalize(extract_numeric_answer(raw))
+    if answer_mode == "multiple_choice":
+        prompt = (
+            "Solve this step by step. The question lists choices (A) through (D). "
+            "End with 'Final answer: (X)' where X is exactly one letter A, B, C, or D.\n\n"
+            f"{question}"
+        )
+        raw = model.generate(prompt)
+        letter = extract_mc_answer(raw)
+        answer = letter.upper() if letter else ""
+    else:
+        raw = model.generate(REASONING_GREEDY_PROMPT.format(question=question))
+        answer = _normalize(extract_numeric_answer(raw))
     return {
         "raw_outputs": [raw],
         "predicted_answer": answer,
@@ -153,6 +178,14 @@ STRATEGY_DEFINITIONS = {
     ),
     "direct_plus_verify": StrategyDefinition("direct_plus_verify", run_direct_plus_verify),
     "direct_plus_revise": StrategyDefinition("direct_plus_revise", run_direct_plus_revise),
+    "reasoning_then_revise": StrategyDefinition(
+        "reasoning_then_revise",
+        run_reasoning_then_revise,
+    ),
+    "self_consistency_3": StrategyDefinition(
+        "self_consistency_3",
+        run_self_consistency_3,
+    ),
     "direct_plus_critique_plus_final": StrategyDefinition(
         "direct_plus_critique_plus_final",
         run_direct_plus_critique_plus_final,
@@ -242,6 +275,8 @@ def run_oracle_subset_eval(
     queries: list[Any],
     strategies: list[str] | None = None,
     strong_model: _ModelProtocol | None = None,
+    answer_mode: str = "numeric",
+    gold_normalizer: Any | None = None,
 ) -> dict[str, Any]:
     """Run all oracle strategies on *queries* and return raw per-query rows.
 
@@ -252,6 +287,10 @@ def run_oracle_subset_eval(
             ``CORE_ORACLE_STRATEGIES``.  Pass ``["strong_direct", ...]`` only
             if *strong_model* is not None.
         strong_model: Optional stronger model used for ``strong_direct`` only.
+        answer_mode: ``numeric`` (default) or ``multiple_choice`` (A–D grading).
+        gold_normalizer: Optional ``callable(str) -> str`` applied to gold before
+            comparison. Defaults to ``_normalize`` for numeric mode and identity
+            for multiple_choice (caller should pass upper-case letters).
 
     Returns:
         Dict with ``per_query_rows``, ``strategies_run``, ``query_ids``.
@@ -265,6 +304,16 @@ def run_oracle_subset_eval(
     if unknown:
         raise ValueError(f"Unknown oracle strategies: {unknown}")
 
+    if answer_mode not in ("numeric", "multiple_choice"):
+        raise ValueError(f"answer_mode must be 'numeric' or 'multiple_choice', got {answer_mode!r}")
+
+    def _default_gold_norm(ans: str) -> str:
+        if answer_mode == "multiple_choice":
+            return (ans or "").strip().upper()[:1]
+        return _normalize(ans)
+
+    gold_norm_fn = gold_normalizer if gold_normalizer is not None else _default_gold_norm
+
     per_query_rows: list[dict[str, Any]] = []
     query_ids: list[str] = []
 
@@ -272,12 +321,25 @@ def run_oracle_subset_eval(
         if query.id not in query_ids:
             query_ids.append(query.id)
 
-        gold = _normalize(query.answer)
+        gold = gold_norm_fn(query.answer)
 
         for strategy in strategies:
             runner = _ORACLE_RUNNERS[strategy]
             effective_model = strong_model if strategy == "strong_direct" else model
-            result = runner(effective_model, query.question)
+            if strategy == "reasoning_then_revise":
+                result = runner(
+                    effective_model,
+                    query.question,
+                    answer_mode=answer_mode,
+                )
+            elif strategy in (
+                "reasoning_greedy",
+                "direct_plus_revise",
+                "self_consistency_3",
+            ):
+                result = runner(effective_model, query.question, answer_mode=answer_mode)
+            else:
+                result = runner(effective_model, query.question)
 
             predicted = result["predicted_answer"]
             correct = predicted == gold
@@ -291,8 +353,14 @@ def run_oracle_subset_eval(
                 "samples_used": result["samples_used"],
                 "cost_proxy": result["samples_used"],
             }
-            # Carry optional multi-stage fields when present.
-            for key in ("first_answer", "revised_answer", "critique_text"):
+            # Carry optional multi-stage / diagnostic fields when present.
+            for key in (
+                "first_answer",
+                "revised_answer",
+                "critique_text",
+                "self_consistency_ambiguous",
+                "self_consistency_tied_values",
+            ):
                 if key in result:
                     row[key] = result[key]
             per_query_rows.append(row)

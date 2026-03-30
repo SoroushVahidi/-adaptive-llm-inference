@@ -19,6 +19,7 @@ from typing import Any, Literal, Protocol
 
 from src.utils.answer_extraction import (
     extract_math_answer,
+    extract_mc_answer,
     extract_numeric_answer,
     normalize_math_answer,
 )
@@ -76,6 +77,15 @@ _REASONING_THEN_REVISE_CHECK = (
 _REASONING_THEN_REVISE_STEP1_USER = (
     "Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
 )
+
+_REASONING_THEN_REVISE_STEP1_MC = (
+    "Solve this step by step. The question lists choices (A) through (D). "
+    "End with 'Final answer: (X)' where X is exactly one letter A, B, C, or D.\n\n"
+    "{question}"
+)
+
+_REASONING_CHAIN_PROMPT = _REASONING_THEN_REVISE_STEP1_USER
+_REASONING_CHAIN_PROMPT_MC = _REASONING_THEN_REVISE_STEP1_MC
 
 
 # ---------------------------------------------------------------------------
@@ -250,22 +260,52 @@ def run_reasoning_greedy(
     }
 
 
-def run_reasoning_then_revise(
+def _final_from_model_output(text: str) -> str:
+    """Prefer MATH-style extraction, fall back to numeric."""
+    parsed = extract_math_answer(text).strip()
+    if parsed:
+        return normalize_math_answer(parsed)
+    return _normalize(extract_numeric_answer(text))
+
+
+def _parse_model_answer(raw: str, answer_mode: str) -> str:
+    if answer_mode == "multiple_choice":
+        letter = extract_mc_answer(raw)
+        return letter.upper() if letter else ""
+    return _final_from_model_output(raw)
+
+
+def run_direct_plus_revise(
     model: _ModelProtocol,
     question: str,
+    answer_mode: str = "numeric",
 ) -> dict[str, Any]:
-    """Reasoning pass followed by a self-revision pass (two model calls)."""
-    prompt = f"Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
-    first_raw = model.generate(prompt)
-    first_answer = _normalize(extract_numeric_answer(first_raw))
+    """Strategy E: direct answer + self-revision prompt."""
+    first_raw = model.generate(question)
+    if answer_mode == "multiple_choice":
+        first_answer = _parse_model_answer(first_raw, answer_mode)
+    else:
+        first_answer = _normalize(extract_numeric_answer(first_raw))
+    if answer_mode == "multiple_choice":
+        tail = (
+            "Please review your work. If you spot an error, correct it. "
+            "End your response with 'Final answer: (X)' where X is A, B, C, or D."
+        )
+    else:
+        tail = (
+            "Please review your work. If you spot an error, correct it. "
+            "End your response with 'Final answer: <number>'."
+        )
     revise_prompt = (
         f"Question: {question}\n\n"
-        f"Your reasoning ended with: {first_answer}\n\n"
-        "Please review your work. If you spot an error, correct it. "
-        "End your response with 'Final answer: <number>'."
+        f"Your previous answer was: {first_answer}\n\n"
+        f"{tail}"
     )
     revised_raw = model.generate(revise_prompt)
-    revised_answer = _normalize(extract_numeric_answer(revised_raw))
+    if answer_mode == "multiple_choice":
+        revised_answer = _parse_model_answer(revised_raw, answer_mode)
+    else:
+        revised_answer = _normalize(extract_numeric_answer(revised_raw))
     if not revised_answer:
         revised_answer = first_answer
     return {
@@ -277,46 +317,40 @@ def run_reasoning_then_revise(
     }
 
 
-def run_direct_plus_revise(
+def run_self_consistency_3(
     model: _ModelProtocol,
     question: str,
+    answer_mode: str = "numeric",
 ) -> dict[str, Any]:
-    """Strategy E: direct answer + self-revision prompt.
-
-    The revision prompt asks the model to review its own answer and provide a
-    'Final answer: <number>' on the last line.
-    """
-    # Step 1 – direct answer
-    first_raw = model.generate(question)
-    first_answer = _normalize(extract_numeric_answer(first_raw))
-
-    # Step 2 – revision prompt
-    revise_prompt = (
-        f"Question: {question}\n\n"
-        f"Your previous answer was: {first_answer}\n\n"
-        "Please review your work. If you spot an error, correct it. "
-        "End your response with 'Final answer: <number>'."
-    )
-    revised_raw = model.generate(revise_prompt)
-    revised_answer = _normalize(extract_numeric_answer(revised_raw))
-    if not revised_answer:
-        revised_answer = first_answer  # fall back to first answer if revision fails
-
+    """Three reasoning samples; majority vote (numeric/math or MC letter)."""
+    if answer_mode == "multiple_choice":
+        tmpl = _REASONING_CHAIN_PROMPT_MC
+    else:
+        tmpl = _REASONING_CHAIN_PROMPT
+    prompt = tmpl.format(question=question)
+    raws = model.generate_n(prompt, 3)
+    answers = [_parse_model_answer(r, answer_mode) for r in raws]
+    nonempty = [a for a in answers if a]
+    if not nonempty:
+        return {
+            "raw_outputs": raws,
+            "predicted_answer": "",
+            "samples_used": 3,
+            "self_consistency_ambiguous": True,
+            "self_consistency_tied_values": "",
+        }
+    counter: Counter[str] = Counter(nonempty)
+    top_freq = counter.most_common(1)[0][1]
+    tied = sorted([a for a, c in counter.items() if c == top_freq])
+    ambiguous = len(tied) > 1
+    final = tied[0]
     return {
-        "raw_outputs": [first_raw, revised_raw],
-        "predicted_answer": revised_answer,
-        "samples_used": 2,
-        "first_answer": first_answer,
-        "revised_answer": revised_answer,
+        "raw_outputs": raws,
+        "predicted_answer": final,
+        "samples_used": 3,
+        "self_consistency_ambiguous": ambiguous,
+        "self_consistency_tied_values": "|".join(tied) if ambiguous else "",
     }
-
-
-def _final_from_model_output(text: str) -> str:
-    """Prefer MATH-style extraction, fall back to numeric."""
-    parsed = extract_math_answer(text).strip()
-    if parsed:
-        return normalize_math_answer(parsed)
-    return _normalize(extract_numeric_answer(text))
 
 
 def run_reasoning_then_revise(
@@ -324,6 +358,7 @@ def run_reasoning_then_revise(
     question: str,
     *,
     revise_model: _ModelProtocol | None = None,
+    answer_mode: str = "numeric",
 ) -> dict[str, Any]:
     """Reasoning pass then a second pass that sees question + full reasoning.
 
@@ -332,14 +367,28 @@ def run_reasoning_then_revise(
     uses *revise_model* when provided, else ``model.with_prompt_prefix`` when
     available, else the same *model* (weaker: shared system prefix).
     """
-    reasoning_raw = model.generate(_REASONING_THEN_REVISE_STEP1_USER.format(question=question))
-    reasoning_answer = _final_from_model_output(reasoning_raw)
+    step1_tmpl = (
+        _REASONING_THEN_REVISE_STEP1_MC
+        if answer_mode == "multiple_choice"
+        else _REASONING_THEN_REVISE_STEP1_USER
+    )
+    reasoning_raw = model.generate(step1_tmpl.format(question=question))
+    reasoning_answer = _parse_model_answer(reasoning_raw, answer_mode)
+
+    if answer_mode == "multiple_choice":
+        end_instr = (
+            "End with 'Final answer: (X)' where X is exactly one letter A, B, C, or D."
+        )
+    else:
+        end_instr = (
+            "End with a clear final answer using 'Final answer: ...' or \\boxed{{...}}."
+        )
 
     revise_user = (
         f"Question:\n{question}\n\n"
         f"Reasoning and draft answer:\n{reasoning_raw}\n\n"
         f"{_REASONING_THEN_REVISE_CHECK}\n"
-        "End with a clear final answer using 'Final answer: ...' or \\boxed{{...}}."
+        f"{end_instr}"
     )
 
     mrev: _ModelProtocol
@@ -357,7 +406,7 @@ def run_reasoning_then_revise(
             mrev = model
 
     revised_raw = mrev.generate(revise_user)
-    revised_answer = _final_from_model_output(revised_raw)
+    revised_answer = _parse_model_answer(revised_raw, answer_mode)
     if not revised_answer:
         revised_answer = reasoning_answer
 
@@ -421,7 +470,7 @@ _STRATEGY_RUNNERS = {
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
     "direct_plus_revise": run_direct_plus_revise,
-    "reasoning_then_revise": run_reasoning_then_revise,
+    "self_consistency_3": run_self_consistency_3,
 }
 
 ALL_STRATEGIES = list(_STRATEGY_RUNNERS.keys())

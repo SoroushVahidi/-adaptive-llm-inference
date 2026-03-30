@@ -1,8 +1,8 @@
-"""AIME 2024 loaders (HuggingFace + optional normalized JSONL cache).
+"""AIME 2024 loaders (HuggingFace + optional JSONL cache).
 
-Primary HF source: ``HuggingFaceH4/aime_2024``.  Routing scripts on main use
-``load_aime2024_hf``; the strong-baselines runner uses ``load_aime2024`` (JSONL
-export + optional local files).
+Primary HF source: ``HuggingFaceH4/aime_2024``.  ``load_aime2024`` mirrors
+``main`` (normalized gold via ``normalize_math_answer``).  ``try_load_aime2024_hf``
+tries multiple Hub IDs for the multi-action routing builder.
 """
 
 from __future__ import annotations
@@ -48,12 +48,7 @@ def load_aime2024(
     jsonl_path: str | Path | None = DEFAULT_JSONL_REL,
     data_file: str | Path | None = None,
 ) -> list[Query]:
-    """Load AIME 2024 as ``Query`` objects; gold ``answer`` is math-normalized.
-
-    If ``data_file`` is set, load JSON array or JSONL with ``question``/``answer``.
-    Otherwise load from HuggingFace and optionally write ``jsonl_path`` (pass
-    ``jsonl_path=None`` to skip writing).
-    """
+    """Load AIME 2024 as ``Query`` objects; gold ``answer`` is math-normalized."""
     if data_file is not None:
         p = Path(data_file)
         records: list[dict[str, str]] = []
@@ -127,3 +122,40 @@ def load_aime2024_hf(
         jsonl_path=None,
         data_file=None,
     )
+
+
+def try_load_aime2024_hf(
+    max_samples: Optional[int] = None,
+    cache_dir: str = "data",
+) -> tuple[list[Query], str, list[dict[str, str]]]:
+    """Try HuggingFace sources in order; returns (queries, source_used, errors)."""
+    sources = ["HuggingFaceH4/aime_2024", "Maxwell-Jia/AIME_2024"]
+    errors: list[dict[str, str]] = []
+    for name in sources:
+        try:
+            queries = load_aime2024(
+                max_samples=max_samples,
+                cache_dir=cache_dir,
+                hf_source=name,
+                split="train",
+                jsonl_path=None,
+            )
+            return queries, name, []
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"source": name, "error_type": type(exc).__name__, "error": str(exc)})
+    return [], "", errors
+
+
+def write_aime2024_jsonl(queries: list[Query], path: str | Path) -> None:
+    """Write ``Query`` rows with ids (for routing builder compatibility)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        for q in queries:
+            fh.write(
+                json.dumps(
+                    {"question_id": q.id, "question": q.question, "answer": q.answer},
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )

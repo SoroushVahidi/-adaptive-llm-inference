@@ -155,6 +155,10 @@ def build_training_rows_from_benchmark(benchmark_path: str | Path) -> list[dict[
 
 
 def _to_float_feature(v: Any) -> float | None:
+    if v is True or v == "True":
+        return 1.0
+    if v is False or v == "False":
+        return 0.0
     if isinstance(v, bool):
         return 1.0 if v else 0.0
     if isinstance(v, (int, float)):
