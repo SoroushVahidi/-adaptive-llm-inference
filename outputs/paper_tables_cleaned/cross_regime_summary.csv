@@ -1,0 +1,4 @@
+dataset,reasoning_acc,revise_acc,revise_helpful_rate,n,adaptive_v6_acc,adaptive_v6_avg_cost,adaptive_v7_acc,adaptive_v7_avg_cost,best_policy,best_policy_acc,best_policy_avg_cost,learned_router_viability
+hard_gsm8k_100,0.79,0.86,0.12,100,0.81,1.26,0.82,1.46,adaptive_policy_v7,0.82,1.46,yes_weak
+math500_100,0.64,0.64,0.06,100,0.65,1.03,0.65,1.09,adaptive_policy_v6,0.65,1.03,marginal_learner_signal
+gsm8k_random_100,0.9,0.92,0.02,100,0.92,1.18,0.92,1.3,adaptive_policy_v6,0.92,1.18,marginal_sparse

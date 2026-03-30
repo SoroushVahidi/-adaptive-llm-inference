@@ -1,0 +1,16 @@
+dataset,method,accuracy,avg_cost,note
+gsm8k_random_100,reasoning_greedy,0.933,1.0,n=30
+gsm8k_random_100,self_consistency_3,0.933,3.0,n=30
+gsm8k_random_100,self_consistency_5,0.933,5.0,n=30
+gsm8k_random_100,direct_plus_revise,0.933,2.0,n=30
+gsm8k_random_100,reasoning_then_revise,0.967,2.0,n=30
+hard_gsm8k_100,reasoning_greedy,0.8,1.0,n=30
+hard_gsm8k_100,self_consistency_3,0.9,3.0,n=30
+hard_gsm8k_100,self_consistency_5,0.9,5.0,n=30
+hard_gsm8k_100,direct_plus_revise,0.833,2.0,n=30
+hard_gsm8k_100,reasoning_then_revise,0.867,2.0,n=30
+math500_100,reasoning_greedy,0.6,1.0,n=15
+math500_100,self_consistency_3,0.533,3.0,n=15
+math500_100,self_consistency_5,0.533,5.0,n=15
+math500_100,direct_plus_revise,0.4,2.0,n=15
+math500_100,reasoning_then_revise,0.6,2.0,n=15

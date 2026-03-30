@@ -1,0 +1,5 @@
+dataset,accuracy,avg_cost,revise_rate,n,source_file
+gsm8k_random100,0.92,1.02,0.02,100,outputs/oracle_routing_eval/gsm8k_random100_oracle_summary.json
+hard_gsm8k_100,0.91,1.12,0.12,100,outputs/oracle_routing_eval/hard_gsm8k_100_oracle_summary.json
+hard_gsm8k_b2,0.92,1.09,0.09,100,outputs/oracle_routing_eval/hard_gsm8k_b2_oracle_summary.json
+math500_100,0.7,1.06,0.06,100,outputs/oracle_routing_eval/math500_100_oracle_summary.json

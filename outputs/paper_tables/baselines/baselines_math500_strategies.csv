@@ -1,0 +1,6 @@
+accuracy,avg_cost_proxy,dataset,strategy
+0.6,1.0,math500,reasoning_greedy
+0.5333333333333333,3.0,math500,self_consistency_3
+0.5333333333333333,5.0,math500,self_consistency_5
+0.4,2.0,math500,direct_plus_revise
+0.6,2.0,math500,reasoning_then_revise

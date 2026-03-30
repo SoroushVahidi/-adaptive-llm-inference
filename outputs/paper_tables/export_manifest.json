@@ -1,0 +1,22 @@
+{
+  "written": [
+    "outputs/paper_tables/baselines/baselines_gsm8k_strategies.csv",
+    "outputs/paper_tables/baselines/baselines_hard_gsm8k_strategies.csv",
+    "outputs/paper_tables/baselines/baselines_math500_strategies.csv",
+    "outputs/paper_tables/cross_regime/cross_regime_summary.csv",
+    "outputs/paper_tables/cross_regime/final_cross_regime_summary.csv",
+    "outputs/paper_tables/oracle_routing/oracle_routing_eval_summaries.csv",
+    "outputs/paper_tables/real_routing/real_policy_eval_comparison_long.csv",
+    "outputs/paper_tables/next_stage/next_stage_budget_curves_all_datasets.csv"
+  ],
+  "blockers": [
+    {
+      "name": "simulated_sweep",
+      "message": "BLOCKED simulated allocation summary tables: missing outputs/simulated_sweep/budget_sweep_comparisons.csv. Regenerate with: python3 scripts/run_simulated_sweep.py --config configs/simulated_sweep.yaml"
+    },
+    {
+      "name": "oracle_subset",
+      "message": "BLOCKED oracle subset table: missing outputs/oracle_subset_eval/summary.json. Regenerate with: python3 scripts/run_oracle_subset_eval.py --config configs/oracle_subset_eval_gsm8k.yaml"
+    }
+  ]
+}

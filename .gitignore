@@ -62,6 +62,14 @@ outputs/*
 !outputs/reasoning_then_revise/**
 !outputs/real_aime2024_routing/
 !outputs/real_aime2024_routing/**
+!outputs/paper_tables/
+!outputs/paper_tables/**
+!outputs/paper_figures/
+!outputs/paper_figures/**
+!outputs/paper_tables_cleaned/
+!outputs/paper_tables_cleaned/**
+!outputs/paper_figures_cleaned/
+!outputs/paper_figures_cleaned/**
 results/
 
 .venv/
