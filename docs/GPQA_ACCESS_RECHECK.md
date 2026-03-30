@@ -62,6 +62,8 @@ load_dataset("hendrydong/gpqa_diamond_mc", split="test[:2]")
 
 ### Official-only normalization (default path)
 
+When `prefer_official=True` and `Idavidrein/gpqa` loads successfully, **`load_gpqa_diamond_mc` does not call `load_dataset` on the mirror**—only the official split is read.
+
 The Hub schema is sufficient **without** the mirror:
 
 | Field | Role |
