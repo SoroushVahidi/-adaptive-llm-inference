@@ -1,0 +1,6 @@
+# Offline evaluation: v5/v6/v7 on false-positive fixtures, recall proxies, real probe snapshot.
+#
+# Run:
+#   python3 scripts/run_adaptive_policy_v7_eval.py --output-dir outputs/adaptive_policy_v7
+
+output_dir: outputs/adaptive_policy_v7

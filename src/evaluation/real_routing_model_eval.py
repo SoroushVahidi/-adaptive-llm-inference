@@ -32,7 +32,13 @@ def _to_int(v: Any) -> int:
         return int(v)
     if isinstance(v, (int, float)):
         return int(v)
-    return int(str(v).strip() or 0)
+    text = str(v).strip()
+    if not text:
+        return 0
+    try:
+        return int(float(text))
+    except ValueError:
+        return 0
 
 
 def _to_float(v: Any) -> float:
@@ -206,7 +212,7 @@ def run_real_routing_model_eval(
         sim = _simulate_routing(rows, [int(p) for p in preds])
         routing_rows.append({"route": model_name, **sim})
 
-    baseline_preds = {
+    baseline_preds: dict[str, list[int]] = {
         "reasoning_greedy": [0] * len(rows),
         "direct_plus_revise": [1] * len(rows),
         "heuristic_calibrated_role": [
@@ -216,6 +222,14 @@ def run_real_routing_model_eval(
             int(_to_float(r.get("unified_error_score", 0.0)) >= 0.5) for r in rows
         ],
     }
+    if rows and "v6_revise_recommended" in rows[0]:
+        baseline_preds["heuristic_v6_revise_column"] = [
+            _to_int(r.get("v6_revise_recommended", 0)) for r in rows
+        ]
+    if rows and "v7_revise_recommended" in rows[0]:
+        baseline_preds["heuristic_v7_revise_column"] = [
+            _to_int(r.get("v7_revise_recommended", 0)) for r in rows
+        ]
     for name, preds in baseline_preds.items():
         routing_rows.append({"route": name, **_simulate_routing(rows, preds)})
 

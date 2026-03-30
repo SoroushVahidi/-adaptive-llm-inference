@@ -1,0 +1,14 @@
+# Smoke / offline run: dummy model + bundled JSON (no HuggingFace download)
+model:
+  type: dummy
+  correct_prob: 0.4
+  seed: 42
+max_samples: 20
+cache_dir: data
+out_dir: outputs/baselines
+gsm8k_data_file: src/datasets/bundled/gsm8k_test_sample.json
+math500_data_file: src/datasets/bundled/math500_tiny.json
+datasets:
+  - gsm8k
+  - hard_gsm8k
+  - math500

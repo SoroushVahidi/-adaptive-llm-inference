@@ -1,0 +1,9 @@
+{
+  "provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "max_tokens": 512,
+  "timeout_seconds": 90,
+  "subset_size_requested": 100,
+  "gsm8k_data_file": null,
+  "data_source": "huggingface_openai_gsm8k_test"
+}

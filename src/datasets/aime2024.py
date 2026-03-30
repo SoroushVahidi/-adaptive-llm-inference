@@ -1,4 +1,9 @@
-"""AIME-style problems (e.g. math-ai/aime24 on HuggingFace) in ``Query`` format."""
+"""AIME 2024 loaders (HuggingFace + optional normalized JSONL cache).
+
+Primary HF source: ``HuggingFaceH4/aime_2024``.  Routing scripts on main use
+``load_aime2024_hf``; the strong-baselines runner uses ``load_aime2024`` (JSONL
+export + optional local files).
+"""
 
 from __future__ import annotations
 
@@ -8,67 +13,117 @@ from typing import Optional
 
 from datasets import load_dataset
 from src.datasets.gsm8k import Query
-from src.utils.answer_extraction import extract_math_answer, normalize_math_answer
+from src.utils.answer_extraction import normalize_math_answer
 
-DEFAULT_SOURCE = "math-ai/aime24"
-DEFAULT_SPLIT = "test"
-
-
-def _answer_from_solution(solution: str) -> str:
-    if not solution or not str(solution).strip():
-        return ""
-    return normalize_math_answer(extract_math_answer(str(solution)))
+DEFAULT_HF_SOURCE = "HuggingFaceH4/aime_2024"
+DEFAULT_JSONL_REL = Path("data/aime_2024_normalized.jsonl")
 
 
-def _record_to_query(record: dict, index: int) -> Query:
-    qid = str(record.get("id") or f"aime_{index}")
-    problem = str(record.get("problem") or "")
-    sol = record.get("solution") or ""
-    gold = _answer_from_solution(str(sol))
-    if not problem:
-        raise ValueError(f"AIME record {qid} missing problem text")
-    if not gold:
-        raise ValueError(f"AIME record {qid} missing extractable gold from solution")
-    return Query(id=qid, question=problem, answer=gold)
+def _row_to_record(ex: dict) -> dict[str, str]:
+    """Map HF row to normalized {question, answer} (numeric / math string)."""
+    q = str(ex.get("problem") or ex.get("Problem") or "").strip()
+    ans = ex.get("answer")
+    if ans is None:
+        ans = ex.get("Answer")
+    a = str(ans).strip() if ans is not None else ""
+    return {"question": q, "answer": a}
 
 
-def _load_from_file(data_file: str | Path, max_samples: Optional[int]) -> list[Query]:
-    path = Path(data_file)
-    if str(data_file).endswith(".jsonl"):
-        records = []
-        with path.open() as fh:
-            for line in fh:
-                if line.strip():
-                    records.append(json.loads(line))
-    else:
-        records = json.loads(path.read_text())
-        if not isinstance(records, list):
-            raise ValueError(f"{data_file} must be a JSON array")
-    out: list[Query] = []
-    for idx, rec in enumerate(records):
-        if max_samples is not None and idx >= max_samples:
-            break
-        if not isinstance(rec, dict):
-            raise ValueError(f"Record {idx} must be an object")
-        out.append(_record_to_query(rec, idx))
-    return out
+def write_aime2024_normalized_jsonl(
+    records: list[dict[str, str]],
+    path: str | Path,
+) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        for rec in records:
+            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 
 def load_aime2024(
-    split: str = DEFAULT_SPLIT,
+    max_samples: int | None = None,
+    cache_dir: str = "data",
+    hf_source: str = DEFAULT_HF_SOURCE,
+    split: str = "train",
+    jsonl_path: str | Path | None = DEFAULT_JSONL_REL,
+    data_file: str | Path | None = None,
+) -> list[Query]:
+    """Load AIME 2024 as ``Query`` objects; gold ``answer`` is math-normalized.
+
+    If ``data_file`` is set, load JSON array or JSONL with ``question``/``answer``.
+    Otherwise load from HuggingFace and optionally write ``jsonl_path`` (pass
+    ``jsonl_path=None`` to skip writing).
+    """
+    if data_file is not None:
+        p = Path(data_file)
+        records: list[dict[str, str]] = []
+        if str(data_file).endswith(".jsonl"):
+            for line in p.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line:
+                    records.append(json.loads(line))
+        else:
+            payload = json.loads(p.read_text(encoding="utf-8"))
+            if not isinstance(payload, list):
+                raise ValueError(f"{data_file} must be a JSON array or .jsonl")
+            records = payload
+        out: list[Query] = []
+        for idx, rec in enumerate(records):
+            if max_samples is not None and idx >= max_samples:
+                break
+            qid = str(rec.get("id") or rec.get("question_id") or f"aime2024_{idx}")
+            qtext = str(rec["question"]).strip()
+            raw_ans = str(rec["answer"]).strip()
+            if not qtext or not raw_ans:
+                continue
+            out.append(
+                Query(
+                    id=qid,
+                    question=qtext,
+                    answer=normalize_math_answer(raw_ans),
+                    choices=None,
+                )
+            )
+        return out
+
+    ds = load_dataset(hf_source, split=split, cache_dir=cache_dir)
+    norm_rows: list[dict[str, str]] = []
+    queries: list[Query] = []
+    for idx, ex in enumerate(ds):
+        rec = _row_to_record(dict(ex))
+        norm_rows.append(rec)
+        if max_samples is not None and idx >= max_samples:
+            continue
+        if not rec["question"] or not rec["answer"]:
+            continue
+        qid = str(dict(ex).get("id") or dict(ex).get("ID") or f"aime2024_{split}_{idx}")
+        queries.append(
+            Query(
+                id=qid,
+                question=rec["question"],
+                answer=normalize_math_answer(rec["answer"]),
+                choices=None,
+            )
+        )
+
+    if jsonl_path is not None:
+        write_aime2024_normalized_jsonl(norm_rows, jsonl_path)
+
+    return queries
+
+
+def load_aime2024_hf(
     max_samples: Optional[int] = None,
     cache_dir: str = "data",
-    data_file: Optional[str | Path] = None,
-    dataset_source: str = DEFAULT_SOURCE,
+    dataset_id: str = "HuggingFaceH4/aime_2024",
+    split: str = "train",
 ) -> list[Query]:
-    """Load AIME-style benchmark rows as ``Query`` objects."""
-    if data_file is not None:
-        return _load_from_file(data_file, max_samples)
-
-    ds = load_dataset(dataset_source, split=split, cache_dir=cache_dir)
-    queries: list[Query] = []
-    for idx, row in enumerate(ds):
-        if max_samples is not None and idx >= max_samples:
-            break
-        queries.append(_record_to_query(dict(row), idx))
-    return queries
+    """Load AIME rows from HF; same normalization as ``load_aime2024`` (no JSONL write)."""
+    return load_aime2024(
+        max_samples=max_samples,
+        cache_dir=cache_dir,
+        hf_source=dataset_id,
+        split=split,
+        jsonl_path=None,
+        data_file=None,
+    )

@@ -20,6 +20,8 @@ class BaselineResult:
     ground_truth: str
     correct: bool
     samples_used: int
+    self_consistency_ambiguous: bool = False
+    self_consistency_tie: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

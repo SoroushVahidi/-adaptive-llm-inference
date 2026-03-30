@@ -1,0 +1,7 @@
+{
+  "n": 100,
+  "reasoning_then_revise_accuracy": 0.88,
+  "reasoning_then_revise_helpful_rate": 0.06,
+  "avg_cost_proxy": 2.0,
+  "output_csv": "data/real_hard_gsm8k_b2_routing_dataset_enriched.csv"
+}

@@ -78,10 +78,13 @@ def _question_profile(question_text: str) -> dict[str, Any]:
     asks_total = bool(TOTAL_WORD_RE.search(question_text))
     asks_action_quantity = bool(ACTION_WORD_RE.search(question_text))
     has_percent_or_ratio = bool(PERCENT_RATIO_RE.search(question_text))
-    numeric_mentions = [
-        Decimal(match.group(0).replace(",", ""))
-        for match in QUESTION_NUMBER_RE.finditer(question_text)
-    ]
+    numeric_mentions: list[Decimal] = []
+    for match in QUESTION_NUMBER_RE.finditer(question_text):
+        token = match.group(0).replace(",", "")
+        try:
+            numeric_mentions.append(Decimal(token))
+        except InvalidOperation:
+            continue
     obvious_total = max(numeric_mentions) if numeric_mentions else None
     integer_expected = asks_how_many and bool(count_units)
     numeric_target_expected = (

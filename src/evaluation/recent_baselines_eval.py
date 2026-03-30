@@ -172,19 +172,20 @@ def run_self_consistency_n(
     raws = model.generate_n(prompt, n)
     extracted = [_normalize_pred(mode, r) for r in raws]
     counter = Counter(extracted)
-    most_common = counter.most_common()
-    top_count = most_common[0][1] if most_common else 0
-    top_val = most_common[0][0] if most_common else ""
-    tied = [v for v, c in most_common if c == top_count and top_count > 0]
-    ambiguous = len(tied) > 1
-    chosen = sorted(tied)[0] if tied else top_val
+    top = counter.most_common()
+    best_count = top[0][1] if top else 0
+    tied_values = sorted([v for v, c in top if c == best_count])
+    tie = len(tied_values) > 1
+    chosen = tied_values[0] if tied_values else ""
+    ambiguous = chosen == ""
     return {
         "raw_outputs": raws,
         "predicted_answer": chosen,
         "samples_used": n,
         "vote_counts": dict(counter),
         "self_consistency_ambiguous": ambiguous,
-        "self_consistency_tied_answers": tied if ambiguous else [],
+        "self_consistency_tie": tie,
+        "self_consistency_tied_answers": tied_values if tie else [],
     }
 
 
@@ -245,10 +246,15 @@ def baseline_result_from_run(
             )
     if run.get("self_consistency_ambiguous"):
         meta["self_consistency_ambiguous"] = True
-        meta["self_consistency_tied_answers"] = run.get("self_consistency_tied_answers", [])
+    if run.get("self_consistency_tie"):
+        meta["self_consistency_tie"] = True
+    if run.get("self_consistency_tied_answers"):
+        meta["self_consistency_tied_answers"] = run["self_consistency_tied_answers"]
     if "vote_counts" in run:
         meta["vote_counts"] = run["vote_counts"]
 
+    sc_ambiguous = bool(run.get("self_consistency_ambiguous"))
+    sc_tie = bool(run.get("self_consistency_tie"))
     return BaselineResult(
         query_id=query.id,
         question=query.question,
@@ -257,6 +263,8 @@ def baseline_result_from_run(
         ground_truth=gold,
         correct=correct,
         samples_used=int(run.get("samples_used", 1)),
+        self_consistency_ambiguous=sc_ambiguous,
+        self_consistency_tie=sc_tie,
         metadata=meta,
     )
 
@@ -294,7 +302,7 @@ def summarize_static_results(
     _rev = ("direct_plus_revise", "reasoning_then_revise")
     revise_helpful_rate = len(rh) / n if baseline_name in _rev else None
 
-    amb = sum(1 for r in results if r.metadata.get("self_consistency_ambiguous"))
+    amb = sum(1 for r in results if r.self_consistency_ambiguous)
     amb_rate = amb / n if baseline_name.startswith("self_consistency") else None
 
     return {

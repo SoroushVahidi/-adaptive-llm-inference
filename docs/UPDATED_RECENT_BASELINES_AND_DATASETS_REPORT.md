@@ -8,7 +8,7 @@ This document summarizes what was implemented and what was run for the **adaptiv
   - `reasoning_greedy` — one CoT-style sample; numeric vs math extraction by dataset mode.
   - `direct_plus_revise` — direct answer then revise (GSM8K-style numeric path); **math mode** uses a boxed-answer revise prompt and `extract_math_answer` / `normalize_math_answer`.
   - `reasoning_then_revise` — reasoning first, then a second pass that sees the full first response and may correct it.
-  - `self_consistency_3` / `self_consistency_5` — multiple reasoning samples, majority vote with deterministic tie-break (sorted order); **ambiguous ties** are logged in per-query metadata (`self_consistency_ambiguous`, `self_consistency_tied_answers`).
+  - `self_consistency_3` / `self_consistency_5` — multiple reasoning samples, majority vote with deterministic tie-break; **empty winner** → `self_consistency_ambiguous`; **count tie** → `self_consistency_tie` (matches `src/baselines/self_consistency.py`). Extra detail may appear in `metadata` (e.g. `self_consistency_tied_answers`).
   - `always_most_expensive` — alias of self-consistency-5 for the static ladder (same as five-sample vote).
 - **Oracle summaries** (`*_oracle_summary.json`):
   - Binary oracle: best of `reasoning_greedy` vs `direct_plus_revise` (cheapest on ties).
@@ -20,9 +20,9 @@ This document summarizes what was implemented and what was run for the **adaptiv
   - **C** — BEST-Route-**inspired** small ladder (`reasoning_greedy` → `reasoning_then_revise` → `self_consistency_3`) from difficulty + confidence.
   - The full **BEST-Route** paper system was **not** reproduced (no official controller code wired here); only the simple inspired baseline above.
 - **Datasets**:
-  - **Hard GSM8K**: `src/datasets/hard_gsm8k.py` — deterministic top-*k* subset by an offline hardness score over query features (full test split ranked by default).
-  - **AIME-style**: `src/datasets/aime2024.py` — loads `math-ai/aime24` (public) into the shared `Query` format; gold from `\boxed{...}` in solutions.
-- **`BaselineResult.metadata`**: optional dict for per-query diagnostics (revise-help flags, ambiguity, vote counts).
+  - **Hard GSM8K**: `src/datasets/hard_gsm8k.py` — **default**: longest questions first (same as `main` for `run_strong_baselines`); **optional** `k=` + `pool_max_samples` for feature-score top-*k* (recent-baselines runner).
+  - **AIME 2024**: `src/datasets/aime2024.py` — loads **`HuggingFaceH4/aime_2024`** (aligned with `main`); optional normalized JSONL cache; `load_aime2024_hf` for HF-only loads.
+- **`BaselineResult`**: `self_consistency_ambiguous` / `self_consistency_tie` (from `main`) plus optional **`metadata`** for experiment-specific diagnostics (revise-help, vote counts, etc.).
 
 ## 2. What datasets were successfully run (this workspace run)
 
@@ -33,7 +33,7 @@ End-to-end run completed with **OpenAI** and **HuggingFace** access. **Slice siz
 | GSM8K slice | 20      | Filenames use `gsm8k{N}_*` where `N` is `--gsm8k-slice` (e.g. `gsm8k100_*` when `N=100`). |
 | Hard GSM8K  | 20      | Use `--hard-k 100` for top-100 hard subset. |
 | MATH500     | 20      | Use `--math500-max 500` for full benchmark. |
-| AIME 2024   | 8       | Source: `math-ai/aime24` on HuggingFace; use `--aime-max` to cap. |
+| AIME 2024   | 8       | Source: `HuggingFaceH4/aime_2024` on HuggingFace; use `--aime-max` to cap. |
 
 Artifacts (gitignored): `outputs/recent_baselines/*.json`, `final_cross_dataset_baseline_summary.csv`, `final_dataset_rollup.csv`.
 

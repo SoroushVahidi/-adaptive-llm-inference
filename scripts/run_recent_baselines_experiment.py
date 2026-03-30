@@ -348,9 +348,9 @@ def main() -> int:
         blockers.append(_dataset_blocker("math500", "HuggingFaceH4/MATH-500", exc))
         traceback.print_exc()
 
-    # --- AIME 2024 (math-ai/aime24) ---
+    # --- AIME 2024 (HuggingFaceH4/aime_2024, same as main strong-baselines path) ---
     try:
-        aime_q = load_aime2024(max_samples=args.aime_max)
+        aime_q = load_aime2024(max_samples=args.aime_max, jsonl_path=None)
         run_one_dataset(
             "aime2024",
             aime_q,
@@ -360,7 +360,7 @@ def main() -> int:
             out_dir / "aime2024_routing_baseline_summary.json",
         )
     except Exception as exc:
-        blockers.append(_dataset_blocker("aime2024", "math-ai/aime24", exc))
+        blockers.append(_dataset_blocker("aime2024", "HuggingFaceH4/aime_2024", exc))
         traceback.print_exc()
 
     if any(b.get("dataset") == "gpqa_diamond" for b in blockers):
