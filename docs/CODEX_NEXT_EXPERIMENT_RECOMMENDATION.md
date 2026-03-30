@@ -97,6 +97,9 @@ then run:
 python3 scripts/run_real_routing_model_eval.py
 ```
 
+(`scripts/run_router_baseline_eval.py` is the separate entry point for oracle-label
+sklearn routers on `routing_dataset.csv`.)
+
 to get decision-tree/bagging/boosting CV metrics and routing simulation against:
 
 - always `reasoning_greedy`

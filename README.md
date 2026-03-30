@@ -7,6 +7,12 @@ Adaptive test-time compute allocation for LLM reasoning under budget constraints
 > See [`docs/BASELINE_TRACKER.md`](docs/BASELINE_TRACKER.md) for the status of
 > every baseline we plan to compare against.
 
+**Git baseline:** The authoritative mainline is the remote branch that tracks
+`origin/main`. In some clones the local ref `main` may still point at an old
+initial commit; use `git fetch origin main && git branch -f main origin/main`
+(or work on a branch created from `origin/main`) before treating `main` as the
+codebase reference.
+
 ## Overview
 
 Given a batch of reasoning queries and a fixed compute budget, how should we
@@ -318,10 +324,18 @@ Evaluate v5/v6/v7 on `data/real_gsm8k_routing_dataset.csv`:
 python3 scripts/run_real_policy_eval.py
 ```
 
-Train/evaluate tree ensembles on `revise_helpful` (requires scikit-learn):
+Train/evaluate tree ensembles on `revise_helpful` (requires scikit-learn; writes
+`outputs/real_routing_model/` by default):
 
 ```bash
 python3 scripts/run_real_routing_model_eval.py
+```
+
+**Oracle-label router baselines** (after a default build that produces
+`outputs/real_routing_dataset/routing_dataset.csv`; writes `outputs/real_router_eval/`):
+
+```bash
+python3 scripts/run_router_baseline_eval.py
 ```
 
 See `docs/REAL_GSM8K_ROUTING_STUDY.md` and `docs/REAL_ROUTING_MODEL_RESULTS.md`.

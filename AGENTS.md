@@ -8,6 +8,8 @@
 
 **Start here:** Read [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) for the full research goal, target venue (EAAI), baseline families, novelty positioning, and implementation plan. Read [`docs/BASELINE_TRACKER.md`](docs/BASELINE_TRACKER.md) for the status of every baseline.
 
+**Mainline reference:** Treat `origin/main` (or a branch based on it) as the real codebase state. If local `main` shows only a handful of files, realign it to `origin/main` before using `main` as a reference.
+
 ### Development Environment
 
 - **Python 3.12** (system `python3`); no `python` symlink — always use `python3`.

@@ -5,7 +5,7 @@
 ## Dataset
 
 - `data/real_gsm8k_routing_dataset.csv` — 100 rows, **2** with `revise_helpful=1`, **98** with `0`.
-- Command: `python3 scripts/run_real_routing_model_eval.py`
+- Command: `python3 scripts/run_real_routing_model_eval.py` (paired-outcomes CSV → `outputs/real_routing_model/`)
 
 ## scikit-learn
 

@@ -18,11 +18,11 @@
 | `run_build_real_routing_dataset.py` — oracle strategy pipeline | ✅ Uses tested `oracle_subset_eval` |
 | `run_build_real_routing_dataset.py` — routing dataset assembly | ✅ Uses tested `routing_dataset` module |
 | `run_build_real_routing_dataset.py` — artifact writing | ✅ oracle + routing CSVs + summaries |
-| `run_real_routing_model_eval.py` — imports | ✅ Clean |
-| `run_real_routing_model_eval.py` — routing CSV guard | ✅ Clear blocker if file missing |
-| `run_real_routing_model_eval.py` — oracle label guard | ✅ Blocks if no oracle labels |
-| `run_real_routing_model_eval.py` — model fitting | ✅ Uses tested `router_baseline` module |
-| `run_real_routing_model_eval.py` — output writing | ✅ JSON + CSV results |
+| `run_router_baseline_eval.py` — imports | ✅ Clean |
+| `run_router_baseline_eval.py` — routing CSV guard | ✅ Clear blocker if file missing |
+| `run_router_baseline_eval.py` — oracle label guard | ✅ Blocks if no oracle labels |
+| `run_router_baseline_eval.py` — model fitting | ✅ Uses tested `router_baseline` module |
+| `run_router_baseline_eval.py` — output writing | ✅ JSON + CSV results |
 | **Only missing prerequisite** | ⛔ `OPENAI_API_KEY` |
 
 ---
@@ -34,7 +34,7 @@
 | File | Role |
 |------|------|
 | `scripts/run_build_real_routing_dataset.py` | Main 100-query experiment entry point |
-| `scripts/run_real_routing_model_eval.py` | Routing model evaluation follow-up |
+| `scripts/run_router_baseline_eval.py` | Sklearn router baselines on `routing_dataset.csv` (oracle labels) |
 
 ### Existing modules (verified as ready)
 
@@ -74,7 +74,7 @@
   offline once the CSV exists.
 - `run_build_real_routing_dataset.py` exits immediately with a clear blocker
   message if `OPENAI_API_KEY` is missing.
-- `run_real_routing_model_eval.py` exits immediately with a clear blocker message
+- `run_router_baseline_eval.py` exits immediately with a clear blocker message
   if the routing CSV is missing or has no oracle labels.
 - All 492 existing tests pass.
 - Both new scripts pass `ruff check`.
@@ -130,10 +130,10 @@ strategy ≈ 700–2100 calls. At `gpt-4o-mini` pricing this is very cheap.
 
 **Expected runtime:** 10–30 minutes depending on API latency.
 
-### Step 2 — Evaluate routing models
+### Step 2 — Evaluate sklearn router baselines (oracle labels)
 
 ```bash
-python3 scripts/run_real_routing_model_eval.py
+python3 scripts/run_router_baseline_eval.py
 ```
 
 No API key required for this step. Runs in seconds.
@@ -143,7 +143,7 @@ No API key required for this step. Runs in seconds.
 ```bash
 export OPENAI_API_KEY=sk-...
 python3 scripts/run_build_real_routing_dataset.py --subset-size 5
-python3 scripts/run_real_routing_model_eval.py \
+python3 scripts/run_router_baseline_eval.py \
     --routing-csv outputs/real_routing_dataset/routing_dataset.csv
 ```
 
@@ -155,7 +155,7 @@ python3 scripts/run_build_real_routing_dataset.py \
     --model gpt-4o-mini \
     --output-dir outputs/real_routing_dataset_v2
 
-python3 scripts/run_real_routing_model_eval.py \
+python3 scripts/run_router_baseline_eval.py \
     --routing-csv outputs/real_routing_dataset_v2/routing_dataset.csv \
     --output-dir outputs/real_router_eval_v2
 ```
@@ -185,7 +185,7 @@ Key values to verify in `routing_dataset_summary.json`:
 - `num_feature_columns`: ≥ 13 (query features) + up to 6 (first-pass features)
 - `num_label_columns`: 5
 
-### After `run_real_routing_model_eval.py`
+### After `run_router_baseline_eval.py`
 
 ```
 outputs/real_router_eval/

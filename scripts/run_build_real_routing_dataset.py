@@ -480,9 +480,9 @@ def main(argv: list[str] | None = None) -> None:
     if args.output_dataset_csv is not None:
         print(f"  Dataset CSV copy   : {args.output_dataset_csv}")
     print()
-    print("Next step: evaluate a routing model on this dataset:")
+    print("Next step: sklearn router baselines on oracle-labelled rows:")
     print(
-        "  python3 scripts/run_real_routing_model_eval.py "
+        "  python3 scripts/run_router_baseline_eval.py "
         f"--routing-csv {routing_paths['csv_path']}"
     )
 
