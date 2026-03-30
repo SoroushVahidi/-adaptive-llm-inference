@@ -1,0 +1,5 @@
+dataset,reasoning_csv_used,reasoning_accuracy,revise_accuracy,oracle_accuracy,best_policy_accuracy,best_policy_cost,best_policy_name,revise_helpful_rate,reasoning_then_revise_accuracy
+gsm8k_random100,data/real_gsm8k_routing_dataset_enriched.csv,0.9,0.92,0.92,0.92,1.18,adaptive_policy_v6,0.02,0.93
+hard_gsm8k_100,data/real_hard_gsm8k_routing_dataset_enriched.csv,0.79,0.86,0.91,0.82,1.46,adaptive_policy_v7,0.12,0.9
+math500_100,data/real_math500_routing_dataset_enriched.csv,0.64,0.64,0.7,0.65,1.03,adaptive_policy_v6,0.06,0.67
+aime2024,data/real_aime2024_routing_dataset.csv,0.1333,0.0667,0.1333,,,,0.0,0.1667

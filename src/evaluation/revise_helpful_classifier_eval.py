@@ -154,6 +154,24 @@ def build_training_rows_from_benchmark(benchmark_path: str | Path) -> list[dict[
     return out
 
 
+def _to_float_feature(v: Any) -> float | None:
+    if v is True or v == "True":
+        return 1.0
+    if v is False or v == "False":
+        return 0.0
+    if isinstance(v, bool):
+        return 1.0 if v else 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
+    text = str(v).strip()
+    if not text:
+        return 0.0
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def _feature_columns(rows: list[dict[str, Any]]) -> list[str]:
     protected = {
         "question_id",
@@ -166,7 +184,14 @@ def _feature_columns(rows: list[dict[str, Any]]) -> list[str]:
         "revise_helpful",
     }
     sample = rows[0] if rows else {}
-    return [c for c in sample if c not in protected]
+    out: list[str] = []
+    for c in sample:
+        if c in protected:
+            continue
+        if _to_float_feature(sample[c]) is None:
+            continue
+        out.append(c)
+    return out
 
 
 def _heuristic_predictions(rows: list[dict[str, Any]]) -> tuple[list[int], list[int]]:
@@ -244,23 +269,6 @@ def _write_csv(path: Path, rows: list[dict[str, Any]], fieldnames: list[str]) ->
         writer.writerows(rows)
 
 
-def _feature_cell_to_float(val: Any) -> float:
-    """Coerce routing-feature cells to floats; non-numeric strings → 0.0."""
-    if val is True or val == "True":
-        return 1.0
-    if val is False or val == "False":
-        return 0.0
-    if isinstance(val, (int, float)):
-        return float(val)
-    s = str(val).strip()
-    if not s:
-        return 0.0
-    try:
-        return float(s)
-    except ValueError:
-        return 0.0
-
-
 def _evaluate_with_sklearn(
     rows: list[dict[str, Any]],
     feature_columns: list[str],
@@ -271,7 +279,10 @@ def _evaluate_with_sklearn(
     from sklearn.preprocessing import StandardScaler
     from sklearn.tree import DecisionTreeClassifier
 
-    X = [[_feature_cell_to_float(row.get(col, 0.0)) for col in feature_columns] for row in rows]
+    X = [
+        [_to_float_feature(row.get(col, 0.0)) or 0.0 for col in feature_columns]
+        for row in rows
+    ]
     y = [int(row["revise_helpful"]) for row in rows]
 
     class_count = len(set(y))

@@ -1,0 +1,13 @@
+{
+  "selection_method": "z_score_blend_question_side",
+  "formula": "hardness = z_len + z_num + 0.5*multi_step + 0.5*equation + 0.3*percent + 0.3*fraction + 0.15*target_quantity_true_count",
+  "pool_size": 1319,
+  "subset_size": 100,
+  "rank_offset": 100,
+  "data_source": "huggingface_openai_gsm8k_test",
+  "seed": 42,
+  "population_mean_chars": 239.87111448066716,
+  "population_std_chars": 97.57072079692878,
+  "population_mean_numeric_mentions": 3.4359363153904474,
+  "population_std_numeric_mentions": 1.7036589573027658
+}

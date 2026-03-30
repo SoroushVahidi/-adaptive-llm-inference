@@ -1,0 +1,28 @@
+# Manual-only workflow to verify OPENAI_API_KEY (repository secret) in Actions.
+# Run: Actions → "Test OpenAI API key" → Run workflow
+#
+# The secret is injected only into this job's env, never logged by this workflow file.
+
+name: Test OpenAI API key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install requests
+        run: pip install "requests>=2.28"
+
+      - name: Probe OpenAI API
+        run: python3 scripts/test_openai_key.py

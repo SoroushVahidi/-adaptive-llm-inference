@@ -1,0 +1,21 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "num_queries_requested": 100,
+  "num_queries_ok": 100,
+  "num_queries_error": 0,
+  "revise_helpful_count": 2,
+  "revise_helpful_rate": 0.02,
+  "reasoning_accuracy": 0.9,
+  "revise_accuracy": 0.92,
+  "paths": {
+    "summary_json": "outputs/real_routing_dataset/gsm8k_subset_run_summary.json",
+    "per_query_csv": "outputs/real_routing_dataset/gsm8k_per_query_outputs.csv",
+    "dataset_csv": "data/real_gsm8k_routing_dataset.csv",
+    "raw_jsonl": "outputs/real_routing_dataset/raw_responses.jsonl",
+    "provider_metadata": "outputs/real_routing_dataset/provider_metadata.json"
+  },
+  "data_source": "huggingface_openai_gsm8k_test"
+}

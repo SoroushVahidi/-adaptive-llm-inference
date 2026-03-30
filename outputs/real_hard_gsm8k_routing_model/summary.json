@@ -1,0 +1,39 @@
+{
+  "run_status": "OK",
+  "evidence_status": "measured_now",
+  "num_rows": 100,
+  "num_positive": 12,
+  "models": [
+    {
+      "model": "decision_tree",
+      "accuracy": 0.9,
+      "precision": 0.6,
+      "recall": 0.5,
+      "f1": 0.5454545454545454,
+      "false_positive_rate": 0.045454545454545456
+    },
+    {
+      "model": "bagging_trees",
+      "accuracy": 0.92,
+      "precision": 0.6428571428571429,
+      "recall": 0.75,
+      "f1": 0.6923076923076924,
+      "false_positive_rate": 0.056818181818181816
+    },
+    {
+      "model": "boosting_shallow_trees",
+      "accuracy": 0.92,
+      "precision": 0.75,
+      "recall": 0.5,
+      "f1": 0.6,
+      "false_positive_rate": 0.022727272727272728
+    }
+  ],
+  "best_model": "bagging_trees",
+  "outputs": {
+    "model_metrics_csv": "outputs/real_hard_gsm8k_routing_model/model_metrics.csv",
+    "per_query_predictions_csv": "outputs/real_hard_gsm8k_routing_model/per_query_predictions.csv",
+    "routing_simulation_csv": "outputs/real_hard_gsm8k_routing_model/routing_simulation.csv",
+    "feature_importance_csv": "outputs/real_hard_gsm8k_routing_model/feature_importance.csv"
+  }
+}

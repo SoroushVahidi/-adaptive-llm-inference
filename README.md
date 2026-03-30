@@ -279,6 +279,68 @@ python3 scripts/run_adaptive_policy_eval.py \
 This writes `summary.json`, `summary.csv`, and `per_query_results.csv` under
 `outputs/adaptive_policy_v1/`.
 
+For an **offline** comparison of adaptive routing policies v4/v5/v6 (no API; uses
+documented false-positive fixtures and small recall proxies):
+
+```bash
+python3 scripts/run_adaptive_policy_v6_eval.py --config configs/adaptive_policy_v6_offline.yaml
+```
+
+Writes `summary.json`, `per_case_results.csv`, and `signal_summary.csv` under
+`outputs/adaptive_policy_v6/`. See `docs/ADAPTIVE_POLICY_V6.md`.
+
+For **offline** v5/v6/v7 comparison (false-positive fixtures, recall proxies, real probe snapshot):
+
+```bash
+python3 scripts/run_adaptive_policy_v7_eval.py
+```
+
+Writes under `outputs/adaptive_policy_v7/`. See `docs/ADAPTIVE_POLICY_V7.md`.
+
+### Real GSM8K routing dataset and policy eval (API)
+
+**Oracle multi-strategy labels** (default; writes `outputs/real_routing_dataset/routing_dataset.csv`):
+
+```bash
+python3 scripts/run_build_real_routing_dataset.py --subset-size 100
+```
+
+**Paired outcomes** for heuristic policy / `revise_helpful` studies (`reasoning_greedy` + `direct_plus_revise` + features):
+
+```bash
+python3 scripts/run_build_real_routing_dataset.py --paired-outcomes --subset-size 100 \
+  --output-dataset-csv data/real_gsm8k_routing_dataset.csv
+```
+
+Evaluate v5/v6/v7 on `data/real_gsm8k_routing_dataset.csv`:
+
+```bash
+python3 scripts/run_real_policy_eval.py
+```
+
+Train/evaluate tree ensembles on `revise_helpful` (requires scikit-learn):
+
+```bash
+python3 scripts/run_real_routing_model_eval.py
+```
+
+See `docs/REAL_GSM8K_ROUTING_STUDY.md` and `docs/REAL_ROUTING_MODEL_RESULTS.md`.
+
+Hard-regime follow-up (MATH500 + mined hard GSM8K):
+
+```bash
+python3 scripts/run_select_hard_gsm8k.py --subset-size 100
+python3 scripts/run_build_math500_routing_dataset.py --subset-size 100
+python3 scripts/run_build_hard_gsm8k_routing_dataset.py
+python3 scripts/run_cross_regime_comparison.py
+```
+
+See `docs/HARD_REGIME_ROUTING_STUDY.md`.
+
+Next-stage EAAI experiments (oracle routing, budget sweep, `reasoning_then_revise`, baselines, AIME):
+
+See `docs/NEXT_STAGE_EXPERIMENT_RESULTS.md` and scripts `run_reasoning_then_revise_addon.py`, `run_next_stage_postprocess.py`, `run_next_stage_baselines.py`, `run_build_aime_routing_dataset.py`, `run_final_cross_regime_summary.py`.
+
 ## Tests & Linting
 
 ```bash

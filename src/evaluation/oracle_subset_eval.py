@@ -78,7 +78,7 @@ STRATEGY_COST_PROXY: dict[str, int] = {
     "structured_sampling_3": 3,   # 3 sequential prompts
     "direct_plus_verify": 2,      # direct + verify
     "direct_plus_revise": 2,      # direct + revise
-    "reasoning_then_revise": 2,   # reasoning + revise
+    "reasoning_then_revise": 2,   # reasoning + review/revise pass
     "self_consistency_3": 3,      # 3 reasoning samples + vote
     "direct_plus_critique_plus_final": 3,  # direct + critique + final
     "first_pass_then_hint_guided_reason": 2,  # first pass + hint-guided
@@ -108,6 +108,7 @@ CORE_ORACLE_STRATEGIES: list[str] = [
     "structured_sampling_3",
     "direct_plus_verify",
     "direct_plus_revise",
+    "reasoning_then_revise",
     "direct_plus_critique_plus_final",
     "first_pass_then_hint_guided_reason",
 ]
@@ -325,10 +326,15 @@ def run_oracle_subset_eval(
         for strategy in strategies:
             runner = _ORACLE_RUNNERS[strategy]
             effective_model = strong_model if strategy == "strong_direct" else model
-            if strategy in (
+            if strategy == "reasoning_then_revise":
+                result = runner(
+                    effective_model,
+                    query.question,
+                    answer_mode=answer_mode,
+                )
+            elif strategy in (
                 "reasoning_greedy",
                 "direct_plus_revise",
-                "reasoning_then_revise",
                 "self_consistency_3",
             ):
                 result = runner(effective_model, query.question, answer_mode=answer_mode)

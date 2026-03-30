@@ -25,7 +25,9 @@ class Query:
 
     id: str
     question: str
-    answer: str  # ground-truth numeric answer
+    answer: str  # gold: numeric / normalized math / single-letter (MCQ)
+    choices: tuple[str, ...] | None = None
+    """If set, multiple-choice: ``answer`` is the correct letter (e.g. ``\"D\"``)."""
 
 
 def _extract_answer(solution: str) -> str:

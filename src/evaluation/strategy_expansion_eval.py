@@ -15,9 +15,14 @@ import json
 from collections import Counter
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
-from src.utils.answer_extraction import extract_mc_answer, extract_numeric_answer
+from src.utils.answer_extraction import (
+    extract_math_answer,
+    extract_mc_answer,
+    extract_numeric_answer,
+    normalize_math_answer,
+)
 
 # ---------------------------------------------------------------------------
 # Typing shim – we only need generate / generate_n from any model object
@@ -63,6 +68,25 @@ _REVISE_SYSTEM = (
     "'Final answer: <number>'. If the answer is fine, repeat it as 'Final answer: <number>'."
 )
 
+_REASONING_THEN_REVISE_CHECK = (
+    "Check the reasoning and final answer carefully. If incorrect, fix it. "
+    "If correct, return the same answer."
+)
+
+# Aligns with ``oracle_subset_eval.REASONING_GREEDY_PROMPT`` for numeric GSM8K-style runs.
+_REASONING_THEN_REVISE_STEP1_USER = (
+    "Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
+)
+
+_REASONING_THEN_REVISE_STEP1_MC = (
+    "Solve this step by step. The question lists choices (A) through (D). "
+    "End with 'Final answer: (X)' where X is exactly one letter A, B, C, or D.\n\n"
+    "{question}"
+)
+
+_REASONING_CHAIN_PROMPT = _REASONING_THEN_REVISE_STEP1_USER
+_REASONING_CHAIN_PROMPT_MC = _REASONING_THEN_REVISE_STEP1_MC
+
 
 # ---------------------------------------------------------------------------
 # Numeric normalization (same logic as self_consistency baseline)
@@ -78,14 +102,6 @@ def _normalize(value: str) -> str:
     if "." in normalized:
         normalized = normalized.rstrip("0").rstrip(".")
     return normalized or "0"
-
-
-def _parse_model_answer(raw: str, answer_mode: str) -> str:
-    """Normalize prediction for grading: numeric (default) or multiple-choice letter."""
-    if answer_mode == "multiple_choice":
-        letter = extract_mc_answer(raw)
-        return letter.upper() if letter else ""
-    return _normalize(extract_numeric_answer(raw))
 
 
 def _majority_vote(answers: list[str]) -> str:
@@ -127,6 +143,48 @@ def run_reasoning_best_of_3(
         "raw_outputs": raws,
         "predicted_answer": final,
         "samples_used": 3,
+    }
+
+
+def run_self_consistency_reasoning_n_numeric(
+    model: _ModelProtocol,
+    question: str,
+    n: int,
+) -> dict[str, Any]:
+    """N reasoning samples (numeric final), majority vote."""
+    prompt = f"Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
+    raws = model.generate_n(prompt, n)
+    answers = [_normalize(extract_numeric_answer(r)) for r in raws]
+    final = _majority_vote(answers)
+    return {
+        "raw_outputs": raws,
+        "predicted_answer": final,
+        "samples_used": n,
+    }
+
+
+def run_self_consistency_reasoning_n_math(
+    model: _ModelProtocol,
+    question: str,
+    n: int,
+) -> dict[str, Any]:
+    """N reasoning samples with MATH-style finals, majority vote on normalized math."""
+    prompt = (
+        "Solve this step by step. Put your final answer in \\boxed{...} "
+        "or end with 'Final answer: ...'.\n\n"
+        f"{question}"
+    )
+    raws = model.generate_n(prompt, n)
+    answers: list[str] = []
+    for r in raws:
+        parsed = extract_math_answer(r).strip()
+        answers.append(normalize_math_answer(parsed) if parsed else "")
+    nonempty = [a for a in answers if a]
+    final = _majority_vote(nonempty) if nonempty else ""
+    return {
+        "raw_outputs": raws,
+        "predicted_answer": final,
+        "samples_used": n,
     }
 
 
@@ -187,100 +245,34 @@ def run_direct_plus_verify(
     }
 
 
-# Shared reasoning-style prompt (matches ``run_reasoning_greedy`` in oracle_subset_eval).
-_REASONING_CHAIN_PROMPT = (
-    "Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
-)
-_REASONING_CHAIN_PROMPT_MC = (
-    "Solve this step by step. The question lists choices (A) through (D). "
-    "End with 'Final answer: (X)' where X is exactly one letter A, B, C, or D.\n\n"
-    "{question}"
-)
-
-
-def run_reasoning_then_revise(
+def run_reasoning_greedy(
     model: _ModelProtocol,
     question: str,
-    answer_mode: str = "numeric",
 ) -> dict[str, Any]:
-    """Run chain-of-thought once, then a revise pass on question + reasoning + answer."""
-    if answer_mode == "multiple_choice":
-        tmpl = _REASONING_CHAIN_PROMPT_MC
-    else:
-        tmpl = _REASONING_CHAIN_PROMPT
-    stage1_raw = model.generate(tmpl.format(question=question))
-    first_answer = _parse_model_answer(stage1_raw, answer_mode)
-    reasoning_block = stage1_raw.strip()
-    max_ctx = 6000
-    if len(reasoning_block) > max_ctx:
-        reasoning_block = reasoning_block[:max_ctx] + "\n[...truncated...]"
-    if answer_mode == "multiple_choice":
-        final_fmt = (
-            "End your response with 'Final answer: (X)' where X is A, B, C, or D. "
-            "If the answer is already correct, repeat it."
-        )
-    else:
-        final_fmt = (
-            "End your response with 'Final answer: <number>'. "
-            "If the answer is already correct, repeat it as 'Final answer: <number>'."
-        )
-    revise_prompt = (
-        f"Question: {question}\n\n"
-        f"Your first reasoning and answer were:\n{reasoning_block}\n\n"
-        f"Your stated final answer was: {first_answer or '(none)'}\n\n"
-        "Review the reasoning carefully. If you find an error, correct it. "
-        f"{final_fmt}"
-    )
-    revise_raw = model.generate(revise_prompt)
-    revised_answer = _parse_model_answer(revise_raw, answer_mode)
-    if not revised_answer:
-        revised_answer = first_answer
-
+    """Single reasoning-style pass (chain-of-thought prompt), one sample."""
+    prompt = f"Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
+    raw = model.generate(prompt)
+    answer = _normalize(extract_numeric_answer(raw))
     return {
-        "raw_outputs": [stage1_raw, revise_raw],
-        "predicted_answer": revised_answer,
-        "samples_used": 2,
-        "first_answer": first_answer,
-        "revised_answer": revised_answer,
+        "raw_outputs": [raw],
+        "predicted_answer": answer,
+        "samples_used": 1,
     }
 
 
-def run_self_consistency_3(
-    model: _ModelProtocol,
-    question: str,
-    answer_mode: str = "numeric",
-) -> dict[str, Any]:
-    """Three independent reasoning samples; majority vote over normalized numeric answers."""
+def _final_from_model_output(text: str) -> str:
+    """Prefer MATH-style extraction, fall back to numeric."""
+    parsed = extract_math_answer(text).strip()
+    if parsed:
+        return normalize_math_answer(parsed)
+    return _normalize(extract_numeric_answer(text))
+
+
+def _parse_model_answer(raw: str, answer_mode: str) -> str:
     if answer_mode == "multiple_choice":
-        tmpl = _REASONING_CHAIN_PROMPT_MC
-    else:
-        tmpl = _REASONING_CHAIN_PROMPT
-    prompt = tmpl.format(question=question)
-    raws = model.generate_n(prompt, 3)
-    answers = [_parse_model_answer(r, answer_mode) for r in raws]
-    nonempty = [a for a in answers if a]
-    if not nonempty:
-        return {
-            "raw_outputs": raws,
-            "predicted_answer": "",
-            "samples_used": 3,
-            "self_consistency_ambiguous": True,
-            "self_consistency_tied_values": "",
-        }
-
-    counter: Counter[str] = Counter(nonempty)
-    top_freq = counter.most_common(1)[0][1]
-    tied = sorted([a for a, c in counter.items() if c == top_freq])
-    ambiguous = len(tied) > 1
-    final = tied[0]
-
-    return {
-        "raw_outputs": raws,
-        "predicted_answer": final,
-        "samples_used": 3,
-        "self_consistency_ambiguous": ambiguous,
-        "self_consistency_tied_values": "|".join(tied) if ambiguous else "",
-    }
+        letter = extract_mc_answer(raw)
+        return letter.upper() if letter else ""
+    return _final_from_model_output(raw)
 
 
 def run_direct_plus_revise(
@@ -288,16 +280,12 @@ def run_direct_plus_revise(
     question: str,
     answer_mode: str = "numeric",
 ) -> dict[str, Any]:
-    """Strategy E: direct answer + self-revision prompt.
-
-    The revision prompt asks the model to review its own answer and provide a
-    'Final answer: <number>' on the last line.
-    """
-    # Step 1 – direct answer
+    """Strategy E: direct answer + self-revision prompt."""
     first_raw = model.generate(question)
-    first_answer = _parse_model_answer(first_raw, answer_mode)
-
-    # Step 2 – revision prompt
+    if answer_mode == "multiple_choice":
+        first_answer = _parse_model_answer(first_raw, answer_mode)
+    else:
+        first_answer = _normalize(extract_numeric_answer(first_raw))
     if answer_mode == "multiple_choice":
         tail = (
             "Please review your work. If you spot an error, correct it. "
@@ -314,10 +302,12 @@ def run_direct_plus_revise(
         f"{tail}"
     )
     revised_raw = model.generate(revise_prompt)
-    revised_answer = _parse_model_answer(revised_raw, answer_mode)
+    if answer_mode == "multiple_choice":
+        revised_answer = _parse_model_answer(revised_raw, answer_mode)
+    else:
+        revised_answer = _normalize(extract_numeric_answer(revised_raw))
     if not revised_answer:
-        revised_answer = first_answer  # fall back to first answer if revision fails
-
+        revised_answer = first_answer
     return {
         "raw_outputs": [first_raw, revised_raw],
         "predicted_answer": revised_answer,
@@ -327,17 +317,159 @@ def run_direct_plus_revise(
     }
 
 
+def run_self_consistency_3(
+    model: _ModelProtocol,
+    question: str,
+    answer_mode: str = "numeric",
+) -> dict[str, Any]:
+    """Three reasoning samples; majority vote (numeric/math or MC letter)."""
+    if answer_mode == "multiple_choice":
+        tmpl = _REASONING_CHAIN_PROMPT_MC
+    else:
+        tmpl = _REASONING_CHAIN_PROMPT
+    prompt = tmpl.format(question=question)
+    raws = model.generate_n(prompt, 3)
+    answers = [_parse_model_answer(r, answer_mode) for r in raws]
+    nonempty = [a for a in answers if a]
+    if not nonempty:
+        return {
+            "raw_outputs": raws,
+            "predicted_answer": "",
+            "samples_used": 3,
+            "self_consistency_ambiguous": True,
+            "self_consistency_tied_values": "",
+        }
+    counter: Counter[str] = Counter(nonempty)
+    top_freq = counter.most_common(1)[0][1]
+    tied = sorted([a for a, c in counter.items() if c == top_freq])
+    ambiguous = len(tied) > 1
+    final = tied[0]
+    return {
+        "raw_outputs": raws,
+        "predicted_answer": final,
+        "samples_used": 3,
+        "self_consistency_ambiguous": ambiguous,
+        "self_consistency_tied_values": "|".join(tied) if ambiguous else "",
+    }
+
+
+def run_reasoning_then_revise(
+    model: _ModelProtocol,
+    question: str,
+    *,
+    revise_model: _ModelProtocol | None = None,
+    answer_mode: str = "numeric",
+) -> dict[str, Any]:
+    """Reasoning pass then a second pass that sees question + full reasoning.
+
+    Step 1: one chain-of-thought style generation (uses *model*'s system prefix).
+    Step 2: verifier prompt with original question and the full reasoning output;
+    uses *revise_model* when provided, else ``model.with_prompt_prefix`` when
+    available, else the same *model* (weaker: shared system prefix).
+    """
+    step1_tmpl = (
+        _REASONING_THEN_REVISE_STEP1_MC
+        if answer_mode == "multiple_choice"
+        else _REASONING_THEN_REVISE_STEP1_USER
+    )
+    reasoning_raw = model.generate(step1_tmpl.format(question=question))
+    reasoning_answer = _parse_model_answer(reasoning_raw, answer_mode)
+
+    if answer_mode == "multiple_choice":
+        end_instr = (
+            "End with 'Final answer: (X)' where X is exactly one letter A, B, C, or D."
+        )
+    else:
+        end_instr = (
+            "End with a clear final answer using 'Final answer: ...' or \\boxed{{...}}."
+        )
+
+    revise_user = (
+        f"Question:\n{question}\n\n"
+        f"Reasoning and draft answer:\n{reasoning_raw}\n\n"
+        f"{_REASONING_THEN_REVISE_CHECK}\n"
+        f"{end_instr}"
+    )
+
+    mrev: _ModelProtocol
+    if revise_model is not None:
+        mrev = revise_model
+    else:
+        wm = getattr(model, "with_prompt_prefix", None)
+        if callable(wm):
+            mrev = wm(
+                "You verify step-by-step math reasoning. "
+                "Check the reasoning and final answer carefully. If incorrect, fix it. "
+                "If correct, return the same answer."
+            )
+        else:
+            mrev = model
+
+    revised_raw = mrev.generate(revise_user)
+    revised_answer = _parse_model_answer(revised_raw, answer_mode)
+    if not revised_answer:
+        revised_answer = reasoning_answer
+
+    return {
+        "raw_outputs": [reasoning_raw, revised_raw],
+        "predicted_answer": revised_answer,
+        "samples_used": 2,
+        "first_answer": reasoning_answer,
+        "revised_answer": revised_answer,
+        "reasoning_raw": reasoning_raw,
+    }
+
+
+def run_reasoning_then_revise_review_only(
+    revise_model: _ModelProtocol,
+    question: str,
+    prior_reasoning_raw: str,
+    *,
+    mode: Literal["numeric", "math"] = "numeric",
+) -> dict[str, Any]:
+    """Second stage only: reuse a frozen reasoning trace from an earlier run."""
+    revise_user = (
+        f"Question:\n{question}\n\n"
+        f"Reasoning and draft answer:\n{prior_reasoning_raw}\n\n"
+        f"{_REASONING_THEN_REVISE_CHECK}\n"
+        "End with a clear final answer using 'Final answer: ...' or \\boxed{{...}}."
+    )
+    revised_raw = revise_model.generate(revise_user)
+    if mode == "math":
+        parsed = extract_math_answer(revised_raw).strip()
+        revised_answer = normalize_math_answer(parsed) if parsed else ""
+    else:
+        revised_answer = _normalize(extract_numeric_answer(revised_raw))
+    prior_ans = (
+        normalize_math_answer(extract_math_answer(prior_reasoning_raw).strip() or "")
+        if mode == "math"
+        else _normalize(extract_numeric_answer(prior_reasoning_raw))
+    )
+    if not revised_answer:
+        revised_answer = prior_ans
+
+    return {
+        "raw_outputs": [revised_raw],
+        "predicted_answer": revised_answer,
+        "samples_used": 1,
+        "first_answer": prior_ans,
+        "revised_answer": revised_answer,
+        "reasoning_raw": prior_reasoning_raw,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Per-query runner dispatcher
 # ---------------------------------------------------------------------------
 
 _STRATEGY_RUNNERS = {
     "direct_greedy": run_direct_greedy,
+    "reasoning_greedy": run_reasoning_greedy,
     "reasoning_best_of_3": run_reasoning_best_of_3,
+    "reasoning_then_revise": run_reasoning_then_revise,
     "structured_sampling_3": run_structured_sampling_3,
     "direct_plus_verify": run_direct_plus_verify,
     "direct_plus_revise": run_direct_plus_revise,
-    "reasoning_then_revise": run_reasoning_then_revise,
     "self_consistency_3": run_self_consistency_3,
 }
 
