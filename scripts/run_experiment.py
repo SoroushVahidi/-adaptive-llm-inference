@@ -24,10 +24,17 @@ from src.evaluation.logger import ExperimentLogger
 from src.models.dummy import DummyModel
 from src.utils.config import load_config
 
+
+def _make_sc(name: str, n: int):
+    return lambda m: SelfConsistencyBaseline(m, name=name, fixed_n=n)
+
+
 BASELINES = {
     "greedy": GreedyBaseline,
     "best_of_n": BestOfNBaseline,
     "self_consistency": SelfConsistencyBaseline,
+    "self_consistency_3": _make_sc("self_consistency_3", 3),
+    "self_consistency_5": _make_sc("self_consistency_5", 5),
 }
 
 
@@ -72,6 +79,8 @@ def run(config: dict) -> None:
     allocator = EqualAllocator()
     if baseline_name == "greedy":
         per_query_samples = [1] * len(queries)
+    elif baseline_name in ("self_consistency_3", "self_consistency_5"):
+        per_query_samples = [1] * len(queries)
     else:
         per_query_samples = allocator.allocate(len(queries), budget)
     total_budget = sum(per_query_samples)
@@ -80,7 +89,14 @@ def run(config: dict) -> None:
     # --- run ---
     logger = ExperimentLogger()
     for query, n in zip(queries, per_query_samples):
-        samples = max(n, n_samples) if baseline_name != "greedy" else 1
+        if baseline_name == "greedy":
+            samples = 1
+        elif baseline_name == "self_consistency_3":
+            samples = 3
+        elif baseline_name == "self_consistency_5":
+            samples = 5
+        else:
+            samples = max(n, n_samples)
         if isinstance(model, DummyModel):
             model.set_ground_truth(query.answer)
         result = baseline.solve(query.id, query.question, query.answer, samples)

@@ -1,0 +1,12 @@
+[
+  {
+    "question_id": "tiny-1",
+    "problem": "What is 2 + 2?",
+    "gold_answer": "4"
+  },
+  {
+    "question_id": "tiny-2",
+    "problem": "Compute 3 * 5.",
+    "answer": "15"
+  }
+]

@@ -4,25 +4,30 @@
 split ``train`` (gated; set ``HF_TOKEN`` / ``HUGGINGFACE_HUB_TOKEN``).
 
 **Official-only normalization:** The Hub row includes ``Question`` plus four answer
-strings: ``Correct Answer``, ``Incorrect Answer 1`` … ``Incorrect Answer 3``. Inspecting
-the released schema shows the correct option is always the first column; we set::
+strings: ``Correct Answer``, ``Incorrect Answer 1`` … ``Incorrect Answer 3``. The
+correct option is always the first column; we set::
 
     choices = (correct, incorrect_1, incorrect_2, incorrect_3)
-    answer = 0
+    answer_index = 0
 
-So ``answer`` is **always 0** on the official path. This is **not** the same as
-randomized A/B/C/D presentation order on a test form—the public release does not
-encode which letter was (A) on the original exam. For shuffled-letter evaluation,
-shuffle ``choices`` and remap ``answer`` in your experiment code with a fixed RNG seed.
+So ``answer_index`` is **always 0** on the official path. This is **not** the same as
+randomized A/B/C/D presentation order on a test form. For shuffled-letter evaluation,
+shuffle ``choices`` and remap the gold index in experiment code with a fixed RNG seed.
 
 **Fallback:** ``hendrydong/gpqa_diamond_mc`` (split ``test``) only if the official
 dataset cannot be loaded. Mirror rows use ``(A)``…``(D)`` blocks and ``\\boxed{}``;
-parsed ``choices`` are in **letter A–D order** and ``answer`` is 0–3 accordingly.
+parsed ``choices`` are in **letter A–D order** and ``answer_index`` is 0–3.
 
-**Ordering risk:** If the Hub maintainers ever reorder columns or change semantics,
-normalization must be re-validated. Optional ``verify_official_mirror_dataset_pair()``
-(below) cross-checks official vs mirror when **both** are loadable—use in tests or
-release audits, not in the default load path.
+**Strong baselines API:** ``load_gpqa_diamond`` returns ``Query`` objects whose
+``answer`` is the **gold letter** ``A``–``D`` (derived from the normalized index), and
+writes JSONL compatible with ``scripts/run_strong_baselines.py`` (``question``,
+``choices``, ``answer`` letter).
+
+The official ``idavidrein/gpqa`` GitHub ``dataset.zip`` can be **password-protected**;
+this module uses the Hub, not that ZIP.
+
+Optional ``verify_official_mirror_dataset_pair()`` cross-checks official vs mirror when
+**both** splits are passed in—use in tests or release audits, not in the default load path.
 """
 
 from __future__ import annotations
@@ -35,6 +40,7 @@ from pathlib import Path
 from typing import Any, Iterator, Optional
 
 from datasets import load_dataset
+from src.datasets.gsm8k import Query
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +53,8 @@ FALLBACK_DATASET = "hendrydong/gpqa_diamond_mc"
 FALLBACK_SPLIT = "test"
 
 DEFAULT_NORMALIZED_PATH = Path("data/gpqa_diamond_normalized.jsonl")
+DEFAULT_HF_MC_SOURCE = FALLBACK_DATASET
+DEFAULT_JSONL_REL = DEFAULT_NORMALIZED_PATH
 
 _RE_OPT_START = re.compile(r"(?:^|\n)\s*\(([A-Da-d])\)\s*", re.MULTILINE)
 
@@ -55,6 +63,11 @@ _RE_BOXED = re.compile(r"\\boxed\{([A-Da-d])\}")
 _RE_FINAL_INSTR = re.compile(
     r"\nPlease write your final answer in the form of.*$",
     re.DOTALL | re.IGNORECASE,
+)
+
+_OPTION_LINE_RE = re.compile(
+    r"^\s*\(\s*([A-Da-d])\s*\)\s*(.+?)\s*$",
+    re.MULTILINE,
 )
 
 
@@ -75,6 +88,9 @@ class GPQAMCRow:
         d = asdict(self)
         d["choices"] = list(self.choices)
         return d
+
+    def gold_letter(self) -> str:
+        return chr(ord("A") + self.answer)
 
 
 def _strip_final_instruction(stem: str) -> str:
@@ -98,7 +114,6 @@ def _normalize_official_row(record: dict[str, Any], index: int) -> GPQAMCRow:
         raise ValueError(f"{qid}: empty Question")
 
     c0, c1, c2, c3 = _official_answer_columns(record)
-    # Schema contract from Idavidrein/gpqa gpqa_diamond: first field is the gold string.
     ca_field = str(record.get("Correct Answer", "")).strip()
     if _norm_choice_text(c0) != _norm_choice_text(ca_field):
         raise ValueError(f"{qid}: Correct Answer column does not match choices[0]")
@@ -202,11 +217,7 @@ def _try_load_fallback(cache_dir: str) -> Any:
 
 
 def verify_official_mirror_dataset_pair(official: Any, mirror: Any) -> None:
-    """Cross-check official vs mirror splits (same length, paired content, boxed vs gold).
-
-    **Does not** load Hub—pass ``datasets`` split objects. Use in tests when both
-    sources are available. Fails loudly if maintainers reorder rows or change schema.
-    """
+    """Cross-check official vs mirror splits (same length, paired content, boxed vs gold)."""
     if len(official) != len(mirror):
         raise ValueError(
             f"Alignment failure: official len {len(official)} != mirror len {len(mirror)}"
@@ -300,7 +311,7 @@ def write_normalized_gpqa_jsonl(
     cache_dir: str = "data",
     prefer_official: bool = True,
 ) -> Path:
-    """Write ``data/gpqa_diamond_normalized.jsonl`` (198 rows when full)."""
+    """Write normalized JSONL with ``id``, ``question``, ``choices``, ``answer`` (int index)."""
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
     rows = load_gpqa_diamond_mc(cache_dir=cache_dir, prefer_official=prefer_official)
@@ -314,7 +325,7 @@ def load_gpqa_from_jsonl(
     path: str | Path = DEFAULT_NORMALIZED_PATH,
     max_samples: Optional[int] = None,
 ) -> list[GPQAMCRow]:
-    """Load normalized JSONL (offline)."""
+    """Load normalized JSONL (offline). Accepts ``answer`` as int or letter."""
     p = Path(path)
     if not p.is_file():
         raise FileNotFoundError(p)
@@ -327,12 +338,162 @@ def load_gpqa_from_jsonl(
                 continue
             d = json.loads(line)
             ch = d["choices"]
+            ans = d["answer"]
+            if isinstance(ans, str) and len(ans.strip()) == 1 and ans.strip().upper() in "ABCD":
+                aidx = ord(ans.strip().upper()) - ord("A")
+            else:
+                aidx = int(ans)
             out.append(
                 GPQAMCRow(
                     id=str(d["id"]),
                     question=str(d["question"]),
                     choices=(ch[0], ch[1], ch[2], ch[3]),
-                    answer=int(d["answer"]),
+                    answer=aidx,
                 )
             )
     return out
+
+
+def _parse_choices_from_problem(problem: str) -> tuple[str, tuple[str, ...]]:
+    """Split GPQA-style problem into stem and ordered choices A–D (legacy mirror regex)."""
+    text = problem.strip()
+    matches = list(_OPTION_LINE_RE.finditer(text))
+    if len(matches) >= 4:
+        start = matches[0].start()
+        stem = text[:start].strip()
+        by_letter: dict[str, str] = {}
+        for m in matches:
+            letter = m.group(1).upper()
+            body = m.group(2).strip()
+            by_letter[letter] = body
+        ordered = tuple(by_letter.get(L, "") for L in "ABCD")
+        return stem, ordered
+    return text, tuple()
+
+
+def _record_from_hf_row(ex: dict, index: int) -> dict[str, object]:
+    """Build normalized record dict from raw mirror Hub row (strong-baselines shape)."""
+    problem = str(ex.get("problem") or "")
+    solution = str(ex.get("solution") or "")
+    stem, choices = _parse_choices_from_problem(problem)
+    from src.utils.mcq_answer import gold_letter_from_solution
+
+    letter = gold_letter_from_solution(solution)
+    if not letter and solution:
+        letter = gold_letter_from_solution("\\boxed{" + solution.strip() + "}")
+    qid = f"gpqa_diamond_{index}"
+    return {
+        "id": qid,
+        "question": stem or problem,
+        "choices": list(choices) if choices else [],
+        "answer": letter,
+        "domain": ex.get("domain", ""),
+        "raw_problem": problem,
+        "raw_solution": solution,
+    }
+
+
+def write_gpqa_normalized_jsonl(records: list[dict[str, object]], path: str | Path) -> None:
+    """Write JSONL with letter ``answer`` (``run_strong_baselines`` / legacy format)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        for rec in records:
+            ans = rec["answer"]
+            if isinstance(ans, int):
+                letter = chr(ord("A") + int(ans))
+            else:
+                letter = str(ans).strip().upper()[:1]
+            out = {
+                "question": rec["question"],
+                "choices": rec["choices"],
+                "answer": letter,
+            }
+            if rec.get("id"):
+                out["id"] = rec["id"]
+            fh.write(json.dumps(out, ensure_ascii=False) + "\n")
+
+
+def _mc_row_to_baseline_record(row: GPQAMCRow) -> dict[str, object]:
+    return {
+        "id": row.id,
+        "question": row.question,
+        "choices": list(row.choices),
+        "answer": row.gold_letter(),
+    }
+
+
+def load_gpqa_diamond(
+    max_samples: int | None = None,
+    cache_dir: str = "data",
+    hf_source: str = DEFAULT_HF_MC_SOURCE,
+    split: str = FALLBACK_SPLIT,
+    jsonl_path: str | Path | None = DEFAULT_JSONL_REL,
+    data_file: str | Path | None = None,
+    prefer_official: bool = True,
+) -> list[Query]:
+    """Load GPQA Diamond as ``Query`` with letter ``answer`` and four ``choices``.
+
+    When ``data_file`` is set, load JSON/JSONL (supports ``answer`` as ``A``–``D`` or
+    int index 0–3). Otherwise use ``load_gpqa_diamond_mc`` (official Hub first, then
+    mirror), ignoring ``hf_source``/``split`` unless official load fails (then mirror).
+
+    Writes ``jsonl_path`` in **letter-answer** format for ``run_strong_baselines`` unless
+    ``jsonl_path=None`` or ``data_file`` is set.
+    """
+    if data_file is not None:
+        p = Path(data_file)
+        rows_raw: list[dict] = []
+        if str(data_file).endswith(".jsonl"):
+            for line in p.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    rows_raw.append(json.loads(line))
+        else:
+            payload = json.loads(p.read_text(encoding="utf-8"))
+            rows_raw = payload if isinstance(payload, list) else [payload]
+        out: list[Query] = []
+        for idx, rec in enumerate(rows_raw):
+            if max_samples is not None and idx >= max_samples:
+                break
+            ch = rec.get("choices") or []
+            if isinstance(ch, str):
+                ch = json.loads(ch)
+            qid = str(rec.get("id") or rec.get("question_id") or f"gpqa_{idx}")
+            raw_ans = rec.get("answer", "")
+            if isinstance(raw_ans, int) and 0 <= raw_ans <= 3:
+                letter = chr(ord("A") + raw_ans)
+            else:
+                letter = str(raw_ans).strip().upper()[:1]
+            out.append(
+                Query(
+                    id=qid,
+                    question=str(rec["question"]),
+                    answer=letter,
+                    choices=tuple(str(c) for c in ch) if ch else tuple(),
+                )
+            )
+        return out
+
+    mc_rows = load_gpqa_diamond_mc(
+        cache_dir=cache_dir,
+        max_samples=None,
+        prefer_official=prefer_official,
+    )
+    all_norm: list[dict[str, object]] = [_mc_row_to_baseline_record(r) for r in mc_rows]
+    queries: list[Query] = []
+    for idx, row in enumerate(mc_rows):
+        if max_samples is not None and idx >= max_samples:
+            break
+        queries.append(
+            Query(
+                id=row.id,
+                question=row.question,
+                answer=row.gold_letter(),
+                choices=row.choices,
+            )
+        )
+
+    if jsonl_path is not None:
+        write_gpqa_normalized_jsonl(all_norm, jsonl_path)
+
+    return queries
