@@ -1,5 +1,6 @@
 from src.utils.answer_extraction import (
     extract_math_answer,
+    extract_mc_answer,
     extract_numeric_answer,
     normalize_math_answer,
 )
@@ -7,6 +8,15 @@ from src.utils.answer_extraction import (
 
 def test_direct_final_numeric_answer() -> None:
     assert extract_numeric_answer("Answer the following question. Final answer: 42") == "42"
+
+
+def test_extract_mc_answer_final_line() -> None:
+    assert extract_mc_answer("Reasoning...\nFinal answer: (B)") == "B"
+    assert extract_mc_answer("Answer: c") == "C"
+
+
+def test_extract_mc_answer_parentheses() -> None:
+    assert extract_mc_answer("I choose (D) because energy resolution.") == "D"
 
 
 def test_reasoning_with_intermediate_numbers_prefers_final_answer_marker() -> None:

@@ -17,7 +17,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Protocol
 
-from src.utils.answer_extraction import extract_numeric_answer
+from src.utils.answer_extraction import extract_mc_answer, extract_numeric_answer
 
 # ---------------------------------------------------------------------------
 # Typing shim – we only need generate / generate_n from any model object
@@ -78,6 +78,14 @@ def _normalize(value: str) -> str:
     if "." in normalized:
         normalized = normalized.rstrip("0").rstrip(".")
     return normalized or "0"
+
+
+def _parse_model_answer(raw: str, answer_mode: str) -> str:
+    """Normalize prediction for grading: numeric (default) or multiple-choice letter."""
+    if answer_mode == "multiple_choice":
+        letter = extract_mc_answer(raw)
+        return letter.upper() if letter else ""
+    return _normalize(extract_numeric_answer(raw))
 
 
 def _majority_vote(answers: list[str]) -> str:
@@ -183,29 +191,48 @@ def run_direct_plus_verify(
 _REASONING_CHAIN_PROMPT = (
     "Solve this step by step and end with 'Final answer: <number>'.\n\n{question}"
 )
+_REASONING_CHAIN_PROMPT_MC = (
+    "Solve this step by step. The question lists choices (A) through (D). "
+    "End with 'Final answer: (X)' where X is exactly one letter A, B, C, or D.\n\n"
+    "{question}"
+)
 
 
 def run_reasoning_then_revise(
     model: _ModelProtocol,
     question: str,
+    answer_mode: str = "numeric",
 ) -> dict[str, Any]:
     """Run chain-of-thought once, then a revise pass on question + reasoning + answer."""
-    stage1_raw = model.generate(_REASONING_CHAIN_PROMPT.format(question=question))
-    first_answer = _normalize(extract_numeric_answer(stage1_raw))
+    if answer_mode == "multiple_choice":
+        tmpl = _REASONING_CHAIN_PROMPT_MC
+    else:
+        tmpl = _REASONING_CHAIN_PROMPT
+    stage1_raw = model.generate(tmpl.format(question=question))
+    first_answer = _parse_model_answer(stage1_raw, answer_mode)
     reasoning_block = stage1_raw.strip()
     max_ctx = 6000
     if len(reasoning_block) > max_ctx:
         reasoning_block = reasoning_block[:max_ctx] + "\n[...truncated...]"
+    if answer_mode == "multiple_choice":
+        final_fmt = (
+            "End your response with 'Final answer: (X)' where X is A, B, C, or D. "
+            "If the answer is already correct, repeat it."
+        )
+    else:
+        final_fmt = (
+            "End your response with 'Final answer: <number>'. "
+            "If the answer is already correct, repeat it as 'Final answer: <number>'."
+        )
     revise_prompt = (
         f"Question: {question}\n\n"
         f"Your first reasoning and answer were:\n{reasoning_block}\n\n"
         f"Your stated final answer was: {first_answer or '(none)'}\n\n"
         "Review the reasoning carefully. If you find an error, correct it. "
-        "End your response with 'Final answer: <number>'. "
-        "If the answer is already correct, repeat it as 'Final answer: <number>'."
+        f"{final_fmt}"
     )
     revise_raw = model.generate(revise_prompt)
-    revised_answer = _normalize(extract_numeric_answer(revise_raw))
+    revised_answer = _parse_model_answer(revise_raw, answer_mode)
     if not revised_answer:
         revised_answer = first_answer
 
@@ -221,11 +248,16 @@ def run_reasoning_then_revise(
 def run_self_consistency_3(
     model: _ModelProtocol,
     question: str,
+    answer_mode: str = "numeric",
 ) -> dict[str, Any]:
     """Three independent reasoning samples; majority vote over normalized numeric answers."""
-    prompt = _REASONING_CHAIN_PROMPT.format(question=question)
+    if answer_mode == "multiple_choice":
+        tmpl = _REASONING_CHAIN_PROMPT_MC
+    else:
+        tmpl = _REASONING_CHAIN_PROMPT
+    prompt = tmpl.format(question=question)
     raws = model.generate_n(prompt, 3)
-    answers = [_normalize(extract_numeric_answer(r)) for r in raws]
+    answers = [_parse_model_answer(r, answer_mode) for r in raws]
     nonempty = [a for a in answers if a]
     if not nonempty:
         return {
@@ -254,6 +286,7 @@ def run_self_consistency_3(
 def run_direct_plus_revise(
     model: _ModelProtocol,
     question: str,
+    answer_mode: str = "numeric",
 ) -> dict[str, Any]:
     """Strategy E: direct answer + self-revision prompt.
 
@@ -262,17 +295,26 @@ def run_direct_plus_revise(
     """
     # Step 1 – direct answer
     first_raw = model.generate(question)
-    first_answer = _normalize(extract_numeric_answer(first_raw))
+    first_answer = _parse_model_answer(first_raw, answer_mode)
 
     # Step 2 – revision prompt
+    if answer_mode == "multiple_choice":
+        tail = (
+            "Please review your work. If you spot an error, correct it. "
+            "End your response with 'Final answer: (X)' where X is A, B, C, or D."
+        )
+    else:
+        tail = (
+            "Please review your work. If you spot an error, correct it. "
+            "End your response with 'Final answer: <number>'."
+        )
     revise_prompt = (
         f"Question: {question}\n\n"
         f"Your previous answer was: {first_answer}\n\n"
-        "Please review your work. If you spot an error, correct it. "
-        "End your response with 'Final answer: <number>'."
+        f"{tail}"
     )
     revised_raw = model.generate(revise_prompt)
-    revised_answer = _normalize(extract_numeric_answer(revised_raw))
+    revised_answer = _parse_model_answer(revised_raw, answer_mode)
     if not revised_answer:
         revised_answer = first_answer  # fall back to first answer if revision fails
 

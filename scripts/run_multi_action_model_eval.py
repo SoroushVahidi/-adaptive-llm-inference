@@ -336,6 +336,10 @@ def main(argv: list[str] | None = None) -> None:
 
         if use_holdout:
             strat_ok = len(np.unique(y)) > 1
+            _, class_counts = np.unique(y, return_counts=True)
+            # Stratified split requires ≥2 samples per class in the full set.
+            if strat_ok and int(class_counts.min()) < 2:
+                strat_ok = False
             x_tr, x_te, y_tr, y_te, idx_tr, idx_te = train_test_split(
                 x_all,
                 y,
@@ -355,6 +359,11 @@ def main(argv: list[str] | None = None) -> None:
                 per_model[mname] = metrics
                 pred_by_model[mname] = pred
             target_entry["models"] = per_model
+            bc = np.bincount(y, minlength=len(le.classes_))
+            target_entry["class_counts_full_dataset"] = {
+                str(le.classes_[i]): int(bc[i]) for i in range(len(le.classes_))
+            }
+            target_entry["train_test_stratified"] = strat_ok
             target_entry["test_size"] = len(test_rows)
             sim = _simulate_block(target, test_rows, pred_by_model, le)
             all_policy_rows.extend(sim)

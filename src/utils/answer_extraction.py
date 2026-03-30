@@ -136,6 +136,44 @@ def _extract_from_final_lines(text: str) -> str:
     return _extract_last_number(tail)
 
 
+_MC_FINAL_RE = re.compile(
+    r"(?:final answer|answer)\s*:\s*\(?\s*([ABCDabcd])\s*\)?",
+    re.IGNORECASE,
+)
+_MC_PAREN_RE = re.compile(r"\(\s*([ABCDabcd])\s*\)")
+_MC_STANDALONE_LETTER_RE = re.compile(r"(?<![A-Za-z])([ABCDabcd])(?![A-Za-z])")
+
+
+def extract_mc_answer(text: str) -> str:
+    """Extract a multiple-choice letter (A–D) from model output.
+
+    Prefer explicit ``Final answer: (B)`` / ``Answer: C`` patterns, then the last
+    parenthesized letter, then a standalone letter token in the final lines.
+    Returns upper-case letter or empty string if none found.
+    """
+    stripped = text.strip()
+    if not stripped:
+        return ""
+
+    matches = list(_MC_FINAL_RE.finditer(stripped))
+    if matches:
+        return matches[-1].group(1).upper()
+
+    last_paren = None
+    for m in _MC_PAREN_RE.finditer(stripped):
+        last_paren = m
+    if last_paren:
+        return last_paren.group(1).upper()
+
+    nonempty = [ln.strip() for ln in stripped.splitlines() if ln.strip()]
+    tail = "\n".join(nonempty[-5:]) if nonempty else stripped
+    letters = _MC_STANDALONE_LETTER_RE.findall(tail)
+    if letters:
+        return letters[-1].upper()
+
+    return ""
+
+
 def extract_numeric_answer(text: str) -> str:
     """Extract a final numeric answer from model output.
 

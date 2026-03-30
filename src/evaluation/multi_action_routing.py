@@ -234,3 +234,92 @@ def write_oracle_summary(path: str | Path, payload: dict[str, Any]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2))
+
+
+def compute_label_distributions(
+    rows: list[dict[str, Any]],
+    strategies: list[str],
+) -> dict[str, Any]:
+    """Counts for oracle labels and per-action correctness marginals."""
+    out: dict[str, Any] = {
+        "best_accuracy_action": dict(Counter(r["best_accuracy_action"] for r in rows)),
+        "num_rows": len(rows),
+    }
+    for lam in LAMBDA_VALUES:
+        suffix = f"{lam:.2f}".replace(".", "_")
+        col = f"best_utility_action_lambda_{suffix}"
+        out[col] = dict(Counter(r[col] for r in rows))
+    for s in strategies:
+        out[f"{s}__correct_count"] = sum(int(r[f"{s}__correct"]) for r in rows)
+    return out
+
+
+def compute_disagreement_analysis(
+    rows: list[dict[str, Any]],
+    strategies: list[str],
+) -> dict[str, Any]:
+    """Per-query action disagreement and pairwise correctness disagreement."""
+    n = len(rows)
+    if n == 0:
+        return {
+            "num_queries": 0,
+            "fraction_all_actions_same_correctness": 0.0,
+            "fraction_at_least_two_actions_differ": 0.0,
+            "pairwise_disagreement_counts": {},
+            "pairwise_disagreement_fraction": {},
+        }
+
+    all_same = 0
+    pairwise: dict[str, dict[str, int]] = {a: {b: 0 for b in strategies} for a in strategies}
+
+    for r in rows:
+        vec = tuple(int(r[f"{s}__correct"]) for s in strategies)
+        if len(set(vec)) <= 1:
+            all_same += 1
+        for i, ai in enumerate(strategies):
+            for j, aj in enumerate(strategies):
+                if i >= j:
+                    continue
+                if int(r[f"{ai}__correct"]) != int(r[f"{aj}__correct"]):
+                    pairwise[ai][aj] += 1
+                    pairwise[aj][ai] += 1
+
+    frac_same = all_same / n
+    pair_frac: dict[str, dict[str, float]] = {
+        a: {b: (pairwise[a][b] / n) for b in strategies if b != a} for a in strategies
+    }
+    idx = {s: i for i, s in enumerate(strategies)}
+    pair_counts_serial = {
+        f"{a}|{b}": pairwise[a][b]
+        for a in strategies
+        for b in strategies
+        if idx[a] < idx[b]
+    }
+    pair_frac_serial = {k: v / n for k, v in pair_counts_serial.items()}
+
+    return {
+        "num_queries": n,
+        "queries_all_four_actions_identical_correctness": all_same,
+        "fraction_all_actions_same_correctness": frac_same,
+        "fraction_at_least_two_actions_differ": 1.0 - frac_same,
+        "pairwise_disagreement_counts": pair_counts_serial,
+        "pairwise_disagreement_fraction": pair_frac_serial,
+        "pairwise_matrix_counts": {a: pairwise[a] for a in strategies},
+        "pairwise_matrix_fractions": pair_frac,
+    }
+
+
+def write_disagreement_analysis(
+    path: str | Path,
+    rows: list[dict[str, Any]],
+    strategies: list[str],
+    extra_meta: dict[str, Any] | None = None,
+) -> None:
+    payload: dict[str, Any] = {
+        "label_distributions": compute_label_distributions(rows, strategies),
+        "disagreement": compute_disagreement_analysis(rows, strategies),
+    }
+    if extra_meta:
+        payload["meta"] = extra_meta
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text(json.dumps(payload, indent=2))
