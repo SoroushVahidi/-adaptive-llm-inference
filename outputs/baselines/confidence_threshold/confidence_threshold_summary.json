@@ -34,5 +34,14 @@
     "revise_rate": 0.06,
     "n": 100,
     "sweep": null
+  },
+  {
+    "regime": "aime2024",
+    "operating_threshold": 0.0,
+    "accuracy": 0.13333333333333333,
+    "avg_cost": 1.0,
+    "revise_rate": 0.0,
+    "n": 30,
+    "sweep": null
   }
 ]
