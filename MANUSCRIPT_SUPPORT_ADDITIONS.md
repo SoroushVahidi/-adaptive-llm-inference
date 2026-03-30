@@ -101,11 +101,20 @@ makes explicit the relationship between:
 - `clarification_wide.csv` — wide format (one row per regime)
 - `clarification_table.tex` — LaTeX booktabs table (ready to paste into manuscript)
 - `clarification_table.json` — machine-readable JSON
+- `NOTES.md` — short explanation of strategy types (see below)
+
+**Important — strategy type distinctions (`NOTES.md`):**
+`always_reasoning` and `best_adaptive` are **single deployable operating points**:
+fixed routing rules that work on new queries without any oracle information.
+`budget_frontier_1.1` and `budget_frontier_1.2` are **sweep-style summaries**
+that rely on oracle query ordering — they are *not* single deployable policies
+and must not be compared directly to practical baselines as if they were.
 
 **Manuscript use:** Drop `clarification_wide.csv` into the manuscript or use
 `clarification_table.tex` directly. Explains why the adaptive policy is below the
 budget frontier on hard regimes (the policy is not oracle-informed; budget
-frontier uses oracle ordering).
+frontier uses oracle ordering). Share `NOTES.md` with reviewers to pre-empt
+confusion between deployable policies and budget-sweep summaries.
 
 ---
 
@@ -124,8 +133,9 @@ frontier uses oracle ordering).
   handling.
 - **Uncertainty analysis** (8 tests): bootstrap CI math, valid interval ordering,
   all-regime coverage, output schema.
-- **Clarification export** (12 tests): artifact concordance, exact accuracy
-  regression, file creation, strategy names, LaTeX output, best-policy names.
+- **Clarification export** (13 tests): artifact concordance, exact accuracy
+  regression, file creation, strategy names, LaTeX output, best-policy names,
+  NOTES.md content verification.
 
 ---
 
@@ -168,7 +178,8 @@ outputs/manuscript_support/
 ├── clarification_table.csv
 ├── clarification_wide.csv
 ├── clarification_table.tex
-└── clarification_table.json
+├── clarification_table.json
+└── NOTES.md                            ← explains practical policies vs budget-frontier rows
 ```
 
 ---
@@ -180,5 +191,5 @@ None. All items requested are fully implemented:
 - Confidence-threshold baseline: ✅ using `unified_confidence_score` from committed data
 - Learned router baseline: ✅ using 48 pre-computed features from committed data
 - Uncertainty analysis: ✅ paired bootstrap, 10,000 replicates, no API needed
-- Clarification export: ✅ reads committed artifact CSVs, produces CSV + LaTeX
-- Tests: ✅ 44 tests, all passing, no regressions to existing 612 tests
+- Clarification export: ✅ reads committed artifact CSVs, produces CSV + LaTeX + NOTES.md
+- Tests: ✅ 45 tests, all passing, no regressions to existing 612 tests

@@ -25,6 +25,11 @@ Output files
 ``<output_dir>/clarification_table.tex``
     LaTeX-ready booktabs table (generated if ``tabulate`` is available, or via
     a minimal built-in formatter).
+``<output_dir>/NOTES.md``
+    Short markdown note explaining that practical policies (always_reasoning,
+    best_adaptive) are single deployable operating points, while budget-frontier
+    rows (budget_frontier_1.1, budget_frontier_1.2) are sweep-style summaries
+    that use oracle ordering and are not single deployable policies.
 
 Public API
 ----------
@@ -299,6 +304,77 @@ def _build_latex(rows: list[ClarificationRow]) -> str:
 # ---------------------------------------------------------------------------
 
 
+_CLARIFICATION_NOTES_MD = """\
+# Clarification Notes: Routing Strategy Types
+
+This note explains the three conceptually distinct result types that appear in
+the manuscript clarification table (`clarification_table.csv`,
+`clarification_wide.csv`, `clarification_table.tex`).
+
+---
+
+## Practical policies — single deployable operating points
+
+**Rows:** `always_reasoning`, `best_adaptive`
+
+These are **single, fixed routing rules** that can be deployed as-is on new
+queries without any oracle information.
+
+- `always_reasoning`: apply first-pass reasoning to every query regardless of
+  difficulty.  Cost is always 1.0 (one LLM call).
+- `best_adaptive` (v6 or v7 depending on regime): the best policy from the
+  manuscript evaluation.  It uses pre-computed features from the *first* LLM
+  call only (no ground-truth labels) to decide whether to invoke a second
+  revision call.  Each query is processed exactly once at deployment time.
+
+Both are **deployable without any post-hoc reordering or oracle information**.
+
+---
+
+## Oracle routing — theoretical upper bound
+
+**Row:** `oracle`
+
+The oracle router knows in advance, for each query, whether applying a revision
+call will improve the answer (`revise_helpful = 1`).  It applies revision only
+to those queries where it actually helps.  This is a theoretical ceiling — it
+cannot be replicated without ground-truth labels at inference time.
+
+The oracle result represents the best possible accuracy achievable by any binary
+routing policy on this regime and dataset.
+
+---
+
+## Budget-frontier values — sweep-style summaries, NOT single deployable policies
+
+**Rows:** `budget_frontier_1.1`, `budget_frontier_1.2`
+
+These values come from the **oracle budget sweep** (`budget_curves_all_datasets.csv`).
+The sweep sorts queries by oracle routing benefit and applies revision to the
+most-beneficial fraction until the target average cost is reached.
+
+**Important:** budget-frontier rows are *not* single deployable policies.
+They represent what an oracle-informed budget allocation achieves at a fixed
+cost target.  Because they use oracle query ordering, they are strictly more
+powerful than any practically deployable policy at the same cost.
+
+Use budget-frontier values only to understand the cost–accuracy trade-off curve,
+not to benchmark a practical system.
+
+---
+
+## Summary
+
+| Row | Type | Deployable? | Uses oracle? |
+|-----|------|-------------|--------------|
+| `always_reasoning` | Practical baseline | ✅ Yes | ❌ No |
+| `best_adaptive` | Practical policy | ✅ Yes | ❌ No |
+| `oracle` | Theoretical ceiling | ❌ No | ✅ Yes |
+| `budget_frontier_1.1` | Sweep summary | ❌ No | ✅ Yes |
+| `budget_frontier_1.2` | Sweep summary | ❌ No | ✅ Yes |
+"""
+
+
 def run_clarification_export(
     regime_files: dict[str, str] | None = None,
     output_dir: str | Path = "outputs/manuscript_support",
@@ -315,6 +391,8 @@ def run_clarification_export(
     ``<output_dir>/clarification_wide.csv``       — wide format (one row per regime)
     ``<output_dir>/clarification_table.tex``      — LaTeX booktabs table
     ``<output_dir>/clarification_table.json``     — JSON (machine-readable)
+    ``<output_dir>/NOTES.md``                     — explains practical policies vs
+                                                    budget-frontier rows
     """
     rows = build_clarification_table(
         regime_files=regime_files,
@@ -355,5 +433,8 @@ def run_clarification_export(
     (out_dir / "clarification_table.json").write_text(
         json.dumps([asdict(r) for r in rows], indent=2)
     )
+
+    # Markdown notes
+    (out_dir / "NOTES.md").write_text(_CLARIFICATION_NOTES_MD)
 
     return rows

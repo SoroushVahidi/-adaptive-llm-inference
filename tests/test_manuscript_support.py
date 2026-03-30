@@ -642,6 +642,28 @@ class TestClarificationExport:
         assert (tmp_path / "clarification_wide.csv").exists()
         assert (tmp_path / "clarification_table.tex").exists()
         assert (tmp_path / "clarification_table.json").exists()
+        assert (tmp_path / "NOTES.md").exists()
+
+    def test_notes_md_explains_practical_vs_frontier(self, tmp_path: Path) -> None:
+        from src.evaluation.clarification_export import run_clarification_export
+
+        run_clarification_export(
+            regime_files={k: str(v) for k, v in REGIME_FILES.items()},
+            output_dir=tmp_path,
+            main_results_csv=MAIN_RESULTS_CSV,
+            oracle_csv=ORACLE_CSV,
+            budget_curves_csv=BUDGET_CURVES_CSV,
+            cross_regime_csv=CROSS_REGIME_CSV,
+        )
+        notes = (tmp_path / "NOTES.md").read_text()
+        # Must explain practical policies as single deployable operating points
+        assert "deployable" in notes.lower()
+        # Must explain budget-frontier as sweep-style summaries
+        assert "sweep" in notes.lower()
+        assert "budget" in notes.lower()
+        # Must mention both key strategy types
+        assert "best_adaptive" in notes or "best adaptive" in notes.lower()
+        assert "budget_frontier" in notes or "budget frontier" in notes.lower()
 
     def test_tidy_csv_has_expected_strategies(self, tmp_path: Path) -> None:
         from src.evaluation.clarification_export import run_clarification_export
