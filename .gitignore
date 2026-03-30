@@ -1,3 +1,4 @@
+### Python build artifacts ###
 __pycache__/
 *.py[cod]
 *.pyo
@@ -5,7 +6,37 @@ __pycache__/
 dist/
 build/
 .eggs/
+*.so
+*.dylib
 
+### Virtual environments ###
+.venv/
+venv/
+env/
+ENV/
+
+### Environment / secrets — NEVER commit real credentials ###
+.env
+.env.*
+!.env.example
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.yaml
+secrets.yml
+secrets.json
+
+### Archive files (do not commit binary blobs) ###
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tgz
+*.rar
+*.7z
+
+### Data directory — only the committed routing datasets are tracked ###
 data/*
 !data/real_gsm8k_routing_dataset.csv
 !data/real_math500_routing_dataset.csv
@@ -17,6 +48,9 @@ data/*
 !data/gpqa_diamond_normalized.jsonl
 !data/real_hard_gsm8k_b2_routing_dataset.csv
 !data/real_hard_gsm8k_b2_routing_dataset_enriched.csv
+!data/consistency_benchmark.json
+
+### Outputs — manuscript-relevant outputs are explicitly tracked ###
 outputs/*
 !outputs/adaptive_policy_v7/
 !outputs/adaptive_policy_v7/**
@@ -70,13 +104,43 @@ outputs/*
 !outputs/paper_tables_cleaned/**
 !outputs/paper_figures_cleaned/
 !outputs/paper_figures_cleaned/**
+
+### Legacy results folder ###
 results/
 
-.venv/
-venv/
-*.env
-.env
-
+### Tool caches ###
 .ruff_cache/
 .pytest_cache/
 .mypy_cache/
+.hypothesis/
+*.coverage
+htmlcov/
+
+### Editor files ###
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+### Model checkpoints / large artifacts ###
+*.ckpt
+*.pt
+*.bin
+*.safetensors
+checkpoints/
+
+### Temporary / debug logs ###
+*.log
+*.tmp
+debug_*/
+tmp/
+temp/
+
+### Jupyter notebooks checkpoints ###
+.ipynb_checkpoints/
+
+### AI agent instructions (internal use only) ###
+AGENTS.md
