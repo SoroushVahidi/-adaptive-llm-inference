@@ -1,5 +1,8 @@
 # GPQA access check (environment diagnostic)
 
+> **Historical snapshot (2026-03-29):** recorded **before** Hub gating was approved for this account.  
+> For current access status see **`docs/GPQA_ACCESS_RECHECK.md`** and the loader **`src/datasets/gpqa.py`**.
+
 Date: 2026-03-29.  
 Scope: dataset / URL access only — no model benchmarks run.
 

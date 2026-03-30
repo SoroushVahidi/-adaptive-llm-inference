@@ -57,14 +57,13 @@ load_dataset("hendrydong/gpqa_diamond_mc", split="test[:2]")
 - **Columns:** `problem`, `solution`, `domain`
 - **Spot check:** same opening text as official **`Question`**; **`solution`** was **`\\boxed{D}`** (letter-in-box), vs official **`Correct Answer`** as **answer string** (e.g. `10^-4 eV`).
 
-## 5. Repo impact (this checkout)
+## 5. Repo integration (updated)
 
-**No GPQA loader** exists in the Python tree yet (grep only hits docs). A future integration is **not** a drop-in column rename:
+**Implemented:** `src/datasets/gpqa.py` loads **`Idavidrein/gpqa`** with **`gpqa_diamond`** / **`train`** by default. You must pass that **config name** (`load_dataset("Idavidrein/gpqa")` without config still raises `ValueError`).
 
-- Official: `load_dataset("Idavidrein/gpqa", "gpqa_diamond", split="train")`, map `Question` → prompt, gold from **`Correct Answer`** (and/or parse MC letters from `Question` if the eval expects A/B/C/D).
-- Fallback: `load_dataset("hendrydong/gpqa_diamond_mc", split="test")`, gold often **`solution`** (e.g. `\\boxed{letter}`).
+**Normalization:** The official `Question` field often lacks a clean `(A)`…`(D)` block (and `Correct Answer` may be a short digit vs full option text). The loader therefore **also reads** `hendrydong/gpqa_diamond_mc` when the official set loads, to recover the final A–D option block and `\\boxed{letter}` gold; it **permutes** mirror options to match official `Correct Answer` / incorrect columns and checks the boxed letter. If the official Hub load fails entirely, it falls back to **mirror-only** parsing.
 
-**Minimal change when adding support:** new dataset module or config entry with `hub_id="Idavidrein/gpqa"`, `config="gpqa_diamond"`, `split="train"`, plus a small **normalization** step so evaluation uses one gold format (string match vs letter).
+**Cached export:** `data/gpqa_diamond_normalized.jsonl` (198 lines) — gitignored except for an explicit `!data/gpqa_diamond_normalized.jsonl` entry. Regenerate with `write_normalized_gpqa_jsonl()` or `python3 -c "from src.datasets.gpqa import write_normalized_gpqa_jsonl; write_normalized_gpqa_jsonl()"`.
 
 ## 6. If access had still failed
 
