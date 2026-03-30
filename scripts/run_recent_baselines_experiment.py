@@ -275,16 +275,17 @@ def main() -> int:
     # --- GSM8K 100 ---
     try:
         gsm_easy = load_gsm8k(split="test", max_samples=args.gsm8k_slice)
+        gsm_key = f"gsm8k{args.gsm8k_slice}"
         run_one_dataset(
-            "gsm8k100",
+            gsm_key,
             gsm_easy,
             "numeric",
-            out_dir / "gsm8k100_static_compute_summary.json",
-            out_dir / "gsm8k100_oracle_summary.json",
-            out_dir / "gsm8k100_routing_baseline_summary.json",
+            out_dir / f"{gsm_key}_static_compute_summary.json",
+            out_dir / f"{gsm_key}_oracle_summary.json",
+            out_dir / f"{gsm_key}_routing_baseline_summary.json",
         )
     except Exception as exc:
-        blockers.append(_dataset_blocker("gsm8k100", "openai/gsm8k", exc))
+        blockers.append(_dataset_blocker(f"gsm8k{args.gsm8k_slice}", "openai/gsm8k", exc))
         traceback.print_exc()
 
     # --- Hard GSM8K ---
@@ -299,7 +300,7 @@ def main() -> int:
             out_dir / "hard_gsm8k_routing_baseline_summary.json",
         )
         easy_compare = load_gsm8k(split="test", max_samples=args.gsm8k_slice)
-        easy_static_path = out_dir / "gsm8k100_static_compute_summary.json"
+        easy_static_path = out_dir / f"gsm8k{args.gsm8k_slice}_static_compute_summary.json"
         hard_static_path = out_dir / "hard_gsm8k_static_compute_summary.json"
         easy_acc = hard_acc = 0.0
         easy_payload: dict | None = None
