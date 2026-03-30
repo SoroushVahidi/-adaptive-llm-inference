@@ -1,0 +1,6 @@
+accuracy,avg_cost_proxy,dataset,strategy
+0.8,1.0,hard_gsm8k,reasoning_greedy
+0.9,3.0,hard_gsm8k,self_consistency_3
+0.9,5.0,hard_gsm8k,self_consistency_5
+0.8333333333333334,2.0,hard_gsm8k,direct_plus_revise
+0.8666666666666667,2.0,hard_gsm8k,reasoning_then_revise

@@ -1,0 +1,22 @@
+{
+  "written": [
+    "outputs/paper_figures/next_stage/next_stage_budget_curve_gsm8k_random100.png",
+    "outputs/paper_figures/next_stage/next_stage_budget_curve_hard_gsm8k_100.png",
+    "outputs/paper_figures/next_stage/next_stage_budget_curve_hard_gsm8k_b2.png",
+    "outputs/paper_figures/next_stage/next_stage_budget_curve_math500_100.png",
+    "outputs/paper_figures/next_stage/next_stage_cascade_curve_gsm8k_random100.png",
+    "outputs/paper_figures/next_stage/next_stage_cascade_curve_hard_gsm8k_100.png",
+    "outputs/paper_figures/next_stage/next_stage_cascade_curve_hard_gsm8k_b2.png",
+    "outputs/paper_figures/next_stage/next_stage_cascade_curve_math500_100.png",
+    "outputs/paper_figures/real_routing/real_policy_accuracy_vs_cost_real_policy_eval.png",
+    "outputs/paper_figures/real_routing/real_policy_accuracy_vs_cost_real_math500_policy_eval.png",
+    "outputs/paper_figures/real_routing/real_policy_accuracy_vs_cost_real_hard_gsm8k_policy_eval.png",
+    "outputs/paper_figures/real_routing/real_policy_accuracy_vs_cost_real_hard_gsm8k_b2_policy_eval.png"
+  ],
+  "blockers": [
+    {
+      "name": "simulated_sweep",
+      "message": "BLOCKED simulated sweep figures: missing outputs/simulated_sweep/budget_sweep_comparisons.csv. Run: python3 scripts/run_simulated_sweep.py --config configs/simulated_sweep.yaml"
+    }
+  ]
+}
