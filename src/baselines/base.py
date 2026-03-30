@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from src.models.base import Model
 
@@ -21,6 +22,7 @@ class BaselineResult:
     samples_used: int
     self_consistency_ambiguous: bool = False
     self_consistency_tie: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class Baseline(ABC):
