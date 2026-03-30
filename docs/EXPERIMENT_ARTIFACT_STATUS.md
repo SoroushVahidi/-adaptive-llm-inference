@@ -9,6 +9,36 @@ Last verification: both commands exited **0** after the recovery pass documented
 
 ---
 
+## Latest verification pass (structured report)
+
+**A. Artifacts successfully generated in this pass**
+
+This workspace already contained the upstream files from a prior recovery run. **No experiment scripts were re-executed** in this pass (nothing was missing). The only actions taken were: confirm files on disk, sanity-check oracle `summary.json`, reinstall dev deps, regenerate paper exports.
+
+**B. Artifacts still missing**
+
+None relative to `generate_paper_tables.py` / `generate_paper_figures.py` strict requirements in this environment.
+
+**C. Blocker per missing artifact**
+
+Not applicable here. On a fresh clone, see the “Failed / blocked artifacts” table below.
+
+**D. Commands to generate each missing artifact later**
+
+See “Minimal reproduction (full paper artifact chain)” and `docs/PAPER_ARTIFACT_GENERATION_STATUS.md`.
+
+**E. Paper tables fully generatable with `--strict`?**
+
+**Yes** — `python3 scripts/generate_paper_tables.py --strict` exited **0** (13 paths under `outputs/paper_tables/`, including `export_manifest.json`).
+
+**F. Paper figures fully generatable with `--strict`?**
+
+**Yes** — `python3 scripts/generate_paper_figures.py --strict` exited **0** (16 paths under `outputs/paper_figures/`, including `export_manifest.json`).
+
+**Note on `outputs/recent_baselines/`:** the paper exporters use **`outputs/baselines/*_baseline_summary.json`** (`run_strong_baselines.py`), not `outputs/recent_baselines/`. To populate recent baselines separately, use `scripts/run_recent_baselines_experiment.py` (optional for the current export scripts).
+
+---
+
 ## Required inputs → producing scripts
 
 | Artifact path(s) | Producer | Upstream dependencies |
