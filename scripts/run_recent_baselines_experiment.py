@@ -98,10 +98,13 @@ def main() -> int:
         help="Cap AIME queries (default: all rows in math-ai/aime24).",
     )
     parser.add_argument(
-        "--skip-routing",
+        "--with-routing",
         action="store_true",
         default=False,
-        help="Skip routing sweeps (saves many API calls; still writes a stub JSON).",
+        help=(
+            "Run threshold routing sweeps (many extra API calls). "
+            "Default: write stub routing JSON only."
+        ),
     )
     parser.add_argument(
         "--routing-max-queries",
@@ -192,7 +195,7 @@ def main() -> int:
         oracle_out = {"dataset": key, **oracle}
         _write_json(oracle_path, oracle_out)
 
-        if routing_path and not args.skip_routing:
+        if routing_path and args.with_routing:
             pq = _reasoning_first_pass_map(static_out)
             n_route = min(len(queries), max(1, args.routing_max_queries))
             q_sub = queries[:n_route]
@@ -200,15 +203,15 @@ def main() -> int:
             routing["routing_subset_size"] = n_route
             routing["total_dataset_size"] = len(queries)
             _write_json(routing_path, {"dataset": key, **routing})
-        elif routing_path and args.skip_routing:
+        elif routing_path:
             _write_json(
                 routing_path,
                 {
                     "dataset": key,
                     "skipped": True,
                     "reason": (
-                        "Omit --skip-routing to run threshold routing sweeps "
-                        "(many extra API calls)."
+                        "Pass --with-routing to run threshold routing sweeps "
+                        "(extra API calls)."
                     ),
                 },
             )
@@ -265,7 +268,7 @@ def main() -> int:
                 "best_routing_baseline": "" if best_route is None else best_route[0],
                 "best_routing_accuracy": "" if best_route is None else f"{best_route[1]:.6f}",
                 "best_routing_cost": "" if best_route is None else f"{best_route[2]:.6f}",
-                "blocker_notes": "routing_skipped" if args.skip_routing else ds_note,
+                "blocker_notes": "routing_skipped_default" if not args.with_routing else ds_note,
             }
         )
 
