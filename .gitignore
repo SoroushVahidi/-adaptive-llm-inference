@@ -115,6 +115,8 @@ outputs/*
 !outputs/real_gpqa_routing_dataset/**
 !outputs/real_gpqa_policy_eval/
 !outputs/real_gpqa_policy_eval/**
+!outputs/feature_method_fit/
+!outputs/feature_method_fit/**
 
 ### Legacy results folder ###
 results/
