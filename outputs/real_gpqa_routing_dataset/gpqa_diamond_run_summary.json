@@ -1,0 +1,27 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "dataset": "gpqa_diamond",
+  "answer_match_mode": "mcq",
+  "data_source": "hf_Idavidrein_gpqa_gpqa_diamond_train",
+  "regime_label": "gpqa_diamond_198",
+  "num_queries_requested": 198,
+  "num_queries_ok": 198,
+  "num_queries_error": 0,
+  "revise_helpful_count": 16,
+  "revise_helpful_rate": 0.08080808080808081,
+  "reasoning_accuracy": 0.4696969696969697,
+  "revise_accuracy": 0.41919191919191917,
+  "reasoning_then_revise_accuracy": null,
+  "reasoning_then_revise_helpful_rate": null,
+  "include_reasoning_then_revise": false,
+  "paths": {
+    "summary_json": "outputs/real_gpqa_routing_dataset/gpqa_diamond_run_summary.json",
+    "per_query_csv": "outputs/real_gpqa_routing_dataset/gpqa_per_query_outputs.csv",
+    "dataset_csv": "data/real_gpqa_diamond_routing_dataset_enriched.csv",
+    "raw_jsonl": "outputs/real_gpqa_routing_dataset/raw_responses.jsonl",
+    "provider_metadata": "outputs/real_gpqa_routing_dataset/provider_metadata.json"
+  }
+}
