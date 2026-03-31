@@ -1,0 +1,5 @@
+regime,n,revise_helpful_prevalence,both_wrong_prevalence,best_explanation_policy,best_explanation_accuracy,best_explanation_cost,best_answer_error_policy,best_answer_error_accuracy,best_answer_error_cost,best_overall_ablation_policy,best_overall_ablation_accuracy,best_overall_ablation_cost,answer_error_beats_explanation_accuracy,answer_error_ties_explanation_accuracy,answer_error_cost_advantage_when_tied,accuracy_diff_answer_minus_explanation
+gsm8k_random_100,100,0.02,0.08,explanation_only_router,0.9,1.0,answer_error_only_router,0.92,1.18,answer_error_only_router,0.92,1.18,True,False,False,0.020000000000000018
+hard_gsm8k_100,100,0.12,0.09,explanation_only_router,0.79,1.02,answer_error_only_router,0.81,1.26,answer_error_only_router,0.81,1.26,True,False,False,0.020000000000000018
+hard_gsm8k_b2,100,0.09,0.08,explanation_dominant_router,0.84,1.04,answer_error_only_router,0.89,1.27,answer_error_only_router,0.89,1.27,True,False,False,0.050000000000000044
+math500_100,100,0.06,0.3,explanation_dominant_router,0.66,1.05,answer_error_dominant_router,0.66,1.05,combined_equal_router,0.66,1.05,False,True,False,0.0
