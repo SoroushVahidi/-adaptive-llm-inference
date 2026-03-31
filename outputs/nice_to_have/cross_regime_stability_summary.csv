@@ -1,0 +1,5 @@
+regime,answer_error_beats_or_ties_explanation,dpr_has_positive_headroom,adaptive_recovers_at_least_50pct_of_dpr_gain,headroom_size
+gsm8k_random100,True,True,True,0.02
+hard_gsm8k_100,True,True,False,0.07
+math500_100,True,False,True,0.0
+ALL_REGIMES,True,False,False,0.03
