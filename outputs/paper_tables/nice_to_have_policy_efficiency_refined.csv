@@ -1,0 +1,5 @@
+regime,best_adaptive_policy,best_adaptive_accuracy,best_adaptive_cost,pct_dpr_gain_recovered,pct_dpr_cost_avoided,gain_per_extra_cost
+gsm8k_random100,adaptive_policy_v6,0.92,1.18,100.0,82.0,0.1111
+hard_gsm8k_100,adaptive_policy_v5,0.86,1.53,100.0,47.0,0.1321
+hard_gsm8k_b2,adaptive_policy_v5,0.91,1.41,100.0,59.0,0.1951
+math500_100,adaptive_policy_v5,0.66,1.71,,29.0,0.0282
