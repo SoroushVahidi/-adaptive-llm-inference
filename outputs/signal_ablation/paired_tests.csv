@@ -1,0 +1,5 @@
+regime,comparison,mean_diff,ci_lower_95,ci_upper_95,p_value_two_sided,n,method
+gsm8k_random_100,answer_error_only_router minus explanation_only_router,0.020000000000000018,0.0,0.05,0.2614,100,paired-bootstrap
+hard_gsm8k_100,answer_error_only_router minus explanation_only_router,0.020000000000000018,-0.03,0.07,0.5502,100,paired-bootstrap
+hard_gsm8k_b2,answer_error_only_router minus explanation_dominant_router,0.050000000000000044,0.01,0.1,0.0108,100,paired-bootstrap
+math500_100,answer_error_dominant_router minus explanation_dominant_router,0.0,0.0,0.0,1.0,100,paired-bootstrap
