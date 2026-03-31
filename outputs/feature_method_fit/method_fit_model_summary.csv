@@ -1,0 +1,17 @@
+param,value
+model,decision_tree
+n_total,400
+importance_prompt_token_length,0.3091
+importance_answer_error_signal,0.2319
+importance_body_final_numeric_mismatch,0.219
+importance_cheap_route_confidence,0.2088
+importance_prompt_number_count,0.0149
+importance_multi_stepness_proxy,0.0113
+importance_constraint_violation_signal,0.0032
+importance_copied_question_number_as_final_answer,0.0019
+importance_explicit_constraint_presence,0.0
+importance_relational_wording_presence,0.0
+importance_special_structure_presence,0.0
+importance_final_answer_parseable,0.0
+importance_target_quantity_mismatch,0.0
+importance_explanation_warning_signal,0.0

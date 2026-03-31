@@ -1,0 +1,15 @@
+feature,side,logistic_coef,dt_importance
+prompt_number_count,question,0.3253,0.0149
+prompt_token_length,question,0.377,0.3091
+multi_stepness_proxy,question,-0.1685,0.0113
+explicit_constraint_presence,question,0.261,0.0
+relational_wording_presence,question,0.0198,0.0
+special_structure_presence,question,0.5188,0.0
+final_answer_parseable,output,0.0539,0.0
+body_final_numeric_mismatch,output,-0.1799,0.219
+target_quantity_mismatch,output,0.0234,0.0
+constraint_violation_signal,output,-0.4068,0.0032
+copied_question_number_as_final_answer,output,-0.4926,0.0019
+cheap_route_confidence,output,-0.9734,0.2088
+explanation_warning_signal,output,0.169,0.0
+answer_error_signal,output,0.9066,0.2319

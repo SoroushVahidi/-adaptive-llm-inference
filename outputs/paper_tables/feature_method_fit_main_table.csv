@@ -1,0 +1,16 @@
+feature_name,side,interpretability,effect_size_proxy,assoc_revise_helpful,assoc_method_fit,manuscript_recommendation,notes
+prompt_token_length,question,5,13.8884,strong,strong,maybe,Correlated with prompt_number_count
+prompt_number_count,question,5,2.7021,strong,strong,yes,—
+answer_error_signal,output,5,0.6251,strong,strong,yes,—
+cheap_route_confidence,output,5,0.5941,strong,strong,yes,Summary signal; correlated with answer_error_signal
+body_final_numeric_mismatch,output,3,0.4077,strong,strong,no,Captures V7-specific cases only; low base rate
+special_structure_presence,question,4,0.3283,strong,strong,yes,—
+constraint_violation_signal,output,4,0.2861,strong,strong,yes,—
+explicit_constraint_presence,question,4,0.2589,strong,strong,maybe,Subset of relational_wording_presence signals
+target_quantity_mismatch,output,4,0.2374,strong,strong,maybe,Subset of constraint_violation_signal
+relational_wording_presence,question,4,0.2293,strong,strong,yes,—
+multi_stepness_proxy,question,4,0.2111,strong,strong,maybe,Overlaps with explicit_constraint_presence
+copied_question_number_as_final_answer,output,3,0.1969,moderate,moderate,no,Question-side proxy; overlaps with answer_error_signal at output
+explanation_warning_signal,output,4,0.0876,moderate,moderate,maybe,Weak association expected from V6 architecture
+final_answer_parseable,output,5,0.0182,negligible,negligible,maybe,—
+target_quantity_type,question,5,,unknown,unknown,maybe,—

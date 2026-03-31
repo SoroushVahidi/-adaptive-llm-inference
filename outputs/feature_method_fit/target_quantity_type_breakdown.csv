@@ -1,0 +1,8 @@
+target_quantity_type,n,rate_revise_helpful,rate_safe_cheap,rate_both_wrong,rate_unnecessary_revise_candidate
+difference,19,0.0526,0.8421,0.1053,0.1579
+money,83,0.0723,0.6627,0.2651,0.0482
+other,31,0.0323,0.9032,0.0645,0.1935
+rate_or_unit,192,0.0885,0.7969,0.1146,0.2552
+remaining_or_left,34,0.0588,0.8824,0.0588,0.5294
+time,20,0.05,0.8,0.15,0.25
+total,21,0.0476,0.8571,0.0952,0.2381

@@ -1,0 +1,16 @@
+feature_name,question_or_output_side,availability,mean_revise_helpful,mean_safe_cheap,effect_size_proxy,logistic_coef,dt_importance,association_with_revise_helpful,association_with_method_fit,interpretability_score,redundancy_notes,manuscript_recommendation
+prompt_token_length,question,direct,66.7586,52.8703,13.8884,0.377,0.3091,strong,strong,5,Correlated with prompt_number_count,maybe
+prompt_number_count,question,direct,7.4138,4.807,2.7021,0.3253,0.0149,strong,strong,5,,yes
+answer_error_signal,output,derived,0.8276,0.2025,0.6251,0.9066,0.2319,strong,strong,5,,yes
+cheap_route_confidence,output,direct,0.2414,0.8354,0.5941,-0.9734,0.2088,strong,strong,5,Summary signal; correlated with answer_error_signal,yes
+body_final_numeric_mismatch,output,derived,0.1034,0.1456,0.4077,-0.1799,0.219,strong,strong,3,Captures V7-specific cases only; low base rate,no
+special_structure_presence,question,derived,0.7586,0.7057,0.3283,0.5188,0.0,strong,strong,4,,yes
+constraint_violation_signal,output,derived,0.1724,0.1139,0.2861,-0.4068,0.0032,strong,strong,4,,yes
+explicit_constraint_presence,question,derived,0.5862,0.4146,0.2589,0.261,0.0,strong,strong,4,Subset of relational_wording_presence signals,maybe
+target_quantity_mismatch,output,direct,0.1379,0.0728,0.2374,0.0234,0.0,strong,strong,4,Subset of constraint_violation_signal,maybe
+relational_wording_presence,question,derived,0.3103,0.2532,0.2293,0.0198,0.0,strong,strong,4,,yes
+multi_stepness_proxy,question,direct,0.3448,0.3165,0.2111,-0.1685,0.0113,strong,strong,4,Overlaps with explicit_constraint_presence,maybe
+copied_question_number_as_final_answer,output,direct,0.2759,0.3924,0.1969,-0.4926,0.0019,moderate,moderate,3,Question-side proxy; overlaps with answer_error_signal at output,no
+explanation_warning_signal,output,derived,0.1034,0.0158,0.0876,0.169,0.0,moderate,moderate,4,Weak association expected from V6 architecture,maybe
+final_answer_parseable,output,direct,1.0,1.0,0.0182,0.0539,0.0,negligible,negligible,5,,maybe
+target_quantity_type,question,direct,,,,,,unknown,unknown,5,,maybe
