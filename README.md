@@ -56,7 +56,7 @@ Most analysis steps run **offline without any API key**.
 │   └── utils/             # Config loading, answer extraction
 ├── configs/               # YAML experiment configurations
 ├── scripts/               # CLI experiment runner scripts
-├── tests/                 # Unit tests (612 passing, ~10 s)
+├── tests/                 # Unit tests (677 collected; pytest: 0 failures; skips may apply)
 ├── docs/                  # Research documentation (see below)
 ├── data/                  # Committed routing datasets
 ├── outputs/               # Committed experiment results
@@ -110,7 +110,7 @@ python3 scripts/run_experiment.py --config configs/equal_allocator.yaml
 
 Results are written as JSON to `outputs/`.
 
-Run the full test suite (offline, ~10 s):
+Run the full test suite (offline, tens of seconds on a typical machine):
 
 ```bash
 pytest
@@ -120,12 +120,22 @@ pytest
 
 ## Real-Model Experiments (Requires OpenAI API Key)
 
-Copy `.env.example` to `.env` and set `OPENAI_API_KEY`:
+Copy `.env.example` to `.env` and set `OPENAI_API_KEY` (the file is gitignored).  
+After `pip install -e .`, the project loads `.env` automatically in key paths (see `docs/CURSOR_TOKEN_SETUP.md`).
+
+**Interactive shell:** load variables and run commands:
 
 ```bash
 cp .env.example .env
 # fill in OPENAI_API_KEY in .env
 export $(grep -v '^#' .env | xargs)
+```
+
+**Cursor / automation:** the agent does not inherit your manual `export` in another terminal. Put the key in `.env`, then run tools via the helper so the key is loaded from the repo:
+
+```bash
+bash scripts/with_dotenv.sh python3 scripts/test_openai_key.py
+bash scripts/with_dotenv.sh python scripts/run_build_real_routing_dataset.py --paired-outcomes --dataset gpqa_diamond --subset-size 5
 ```
 
 See [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) for the exact commands that
@@ -142,7 +152,7 @@ reproduce the main manuscript results.
 | GSM8K | HuggingFace `openai/gsm8k` | Auto-downloaded on first run |
 | MATH500 | HuggingFace `lighteval/MATH-Hard` | Auto-downloaded on first run |
 | AIME-2024 | Subset in `data/` | Committed (30 problems) |
-| GPQA-Diamond | Normalised file in `data/` | Committed (`data/gpqa_diamond_normalized.jsonl`) |
+| GPQA-Diamond | Normalised file in `data/` | Committed (`data/gpqa_diamond_normalized.jsonl`); enriched routing CSV via `docs/GPQA_EVALUATION_STATUS.md` |
 
 ### Committed routing datasets
 
@@ -157,7 +167,7 @@ for construction details.
 | `data/real_hard_gsm8k_routing_dataset_enriched.csv` | 100 | Hard GSM8K | ✅ Main |
 | `data/real_hard_gsm8k_b2_routing_dataset_enriched.csv` | 100 | Hard GSM8K (batch 2) | ✅ Main |
 | `data/real_math500_routing_dataset_enriched.csv` | 100 | MATH500 | ✅ Main |
-| `data/real_aime2024_routing_dataset.csv` | 30 | AIME-2024 | 🔬 Exploratory (no policy eval) |
+| `data/real_aime2024_routing_dataset.csv` | 30 | AIME-2024 | 🔬 Exploratory (supplementary eval in `outputs/small_pass/`; not main paper) |
 
 See [`DATA_AVAILABILITY.md`](DATA_AVAILABILITY.md) for full provenance.
 
@@ -178,6 +188,9 @@ See [`MANUSCRIPT_ARTIFACTS.md`](MANUSCRIPT_ARTIFACTS.md) and
 | `outputs/paper_tables/oracle_routing/` | Oracle routing upper-bound analysis | ✅ Main paper |
 | `outputs/budget_sweep/` | Budget-vs-accuracy sweep CSVs | ✅ Main paper |
 | `outputs/real_*_policy_eval/` | Per-regime policy evaluation | ✅ Main paper |
+| `outputs/small_pass/` | Exploratory AIME-2024 policy eval + confidence-threshold sweep (offline) | 🔬 Supplementary |
+| `outputs/paper_tables_small_pass/` | Tables for AIME + confidence baseline (`scripts/run_small_pass.py`) | 🔬 Supplementary |
+| `outputs/baselines/confidence_threshold/` | Confidence-threshold router baseline (`scripts/run_confidence_baseline.py`) | 🔬 Supplementary |
 
 Large raw API response files (`raw_responses.jsonl`) are committed for full
 reproducibility traceability but are not intended to be cited directly.

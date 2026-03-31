@@ -8,6 +8,9 @@ from typing import Any
 from urllib import error, request
 
 from src.models.base import Model
+from src.utils.repo_env import try_load_repo_dotenv
+
+try_load_repo_dotenv()
 
 
 def _normalize_base_url(base_url: str | None) -> str:

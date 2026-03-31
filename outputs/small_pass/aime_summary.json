@@ -1,0 +1,63 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "dataset": "aime2024",
+  "num_rows": 30,
+  "revise_helpful_prevalence": 0.0,
+  "reasoning_greedy_accuracy": 0.13333333333333333,
+  "v7_accuracy": 0.13333333333333333,
+  "oracle_accuracy": 0.13333333333333333,
+  "confidence_router_accuracy": 0.13333333333333333,
+  "confidence_router_threshold": 0.0,
+  "comparison": [
+    {
+      "route": "reasoning_greedy",
+      "accuracy": 0.13333333333333333,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0,
+      "notes": "cheap baseline (no revision)"
+    },
+    {
+      "route": "direct_plus_revise",
+      "accuracy": 0.06666666666666667,
+      "avg_cost": 2.0,
+      "revise_rate": 1.0,
+      "notes": "always-revise baseline"
+    },
+    {
+      "route": "adaptive_policy_v5",
+      "accuracy": 0.06666666666666667,
+      "avg_cost": 1.9,
+      "revise_rate": 0.9,
+      "notes": "calibrated role + unified error policy"
+    },
+    {
+      "route": "adaptive_policy_v6",
+      "accuracy": 0.13333333333333333,
+      "avg_cost": 1.1333333333333333,
+      "revise_rate": 0.13333333333333333,
+      "notes": "v5 + answer confidence filtering"
+    },
+    {
+      "route": "adaptive_policy_v7",
+      "accuracy": 0.13333333333333333,
+      "avg_cost": 1.3,
+      "revise_rate": 0.3,
+      "notes": "v6 + extended false-negative fixes (main policy)"
+    },
+    {
+      "route": "confidence_threshold",
+      "accuracy": 0.13333333333333333,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0,
+      "notes": "confidence router (threshold=0.00, target_cost\u22641.2)"
+    },
+    {
+      "route": "oracle",
+      "accuracy": 0.13333333333333333,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0,
+      "notes": "oracle upper bound (revise only when revise_helpful=1)"
+    }
+  ]
+}

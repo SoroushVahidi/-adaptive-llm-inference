@@ -17,6 +17,7 @@ from typing import Any, Literal
 
 from src.datasets.gsm8k import Query, load_gsm8k
 from src.datasets.math500 import load_math500
+from src.evaluation.strong_baselines_eval import eval_options_for_task, prompt_for_query
 from src.evaluation.strategy_expansion_eval import (
     run_direct_plus_revise,
     run_reasoning_then_revise_review_only,
@@ -37,6 +38,7 @@ from src.utils.answer_extraction import (
     extract_numeric_answer,
     normalize_math_answer,
 )
+from src.utils.mcq_answer import extract_mcq_letter, normalize_mcq_letter
 
 
 def _norm_numeric(value: str) -> str:
@@ -71,19 +73,32 @@ def _answers_match_math(gold: str, predicted: str) -> bool:
     return bool(g) and g == p
 
 
-def _predicted_from_reasoning_raw(raw: str, mode: Literal["numeric", "math"]) -> str:
+def _predicted_from_reasoning_raw(
+    raw: str, mode: Literal["numeric", "math", "mcq"]
+) -> str:
+    if mode == "mcq":
+        return extract_mcq_letter(raw)
     if mode == "math":
         parsed = extract_math_answer(raw).strip()
         return normalize_math_answer(parsed) if parsed else ""
     return _norm_numeric(extract_numeric_answer(raw))
 
 
-def _predicted_from_revise_outputs(raw_outputs: list[Any], mode: Literal["numeric", "math"]) -> str:
+def _predicted_from_revise_outputs(
+    raw_outputs: list[Any], mode: Literal["numeric", "math", "mcq"]
+) -> str:
     last = str(raw_outputs[-1]) if raw_outputs else ""
+    if mode == "mcq":
+        return extract_mcq_letter(last)
     if mode == "math":
         parsed = extract_math_answer(last).strip()
         return normalize_math_answer(parsed) if parsed else ""
     return _norm_numeric(extract_numeric_answer(last))
+
+
+def _answers_match_mcq(gold: str, predicted: str) -> bool:
+    g, p = normalize_mcq_letter(gold), normalize_mcq_letter(predicted)
+    return bool(g) and g == p
 
 
 def _flatten_features(prefix: str, d: dict[str, Any], out: dict[str, float]) -> None:
@@ -165,10 +180,11 @@ class BuildConfig:
     output_dir: str | Path
     output_dataset_csv: str | Path
     gsm8k_data_file: str | Path | None = None
-    dataset: Literal["gsm8k", "math500", "custom"] = "gsm8k"
+    dataset: Literal["gsm8k", "math500", "custom", "gpqa_diamond"] = "gsm8k"
     math500_data_file: str | Path | None = None
     queries_override: list[Query] | None = None
-    answer_match_mode: Literal["numeric", "math"] | None = None
+    answer_match_mode: Literal["numeric", "math", "mcq"] | None = None
+    gpqa_prefer_official: bool = True
     model_name: str = "gpt-4o-mini"
     max_tokens: int = 512
     timeout: int = 90
@@ -179,9 +195,11 @@ class BuildConfig:
     regime_label: str = ""
     include_reasoning_then_revise: bool = False
 
-    def effective_match_mode(self) -> Literal["numeric", "math"]:
+    def effective_match_mode(self) -> Literal["numeric", "math", "mcq"]:
         if self.answer_match_mode is not None:
             return self.answer_match_mode
+        if self.dataset == "gpqa_diamond":
+            return "mcq"
         return "math" if self.dataset == "math500" else "numeric"
 
 
@@ -200,7 +218,10 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
     checkpoint_path = out_dir / "checkpoint.json"
 
     match_mode = cfg.effective_match_mode()
-    answers_match = _answers_match_math if match_mode == "math" else _answers_match_numeric
+    if match_mode == "mcq":
+        answers_match = _answers_match_mcq
+    else:
+        answers_match = _answers_match_math if match_mode == "math" else _answers_match_numeric
 
     blockers: list[str] = []
     if not os.getenv("OPENAI_API_KEY", "").strip():
@@ -217,6 +238,7 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
         "regime_label": cfg.regime_label or "",
         "gsm8k_data_file": str(cfg.gsm8k_data_file) if cfg.gsm8k_data_file else None,
         "math500_data_file": str(cfg.math500_data_file) if cfg.math500_data_file else None,
+        "gpqa_prefer_official": cfg.gpqa_prefer_official,
     }
     provider_meta.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
@@ -234,18 +256,29 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
             "dataset_csv": str(dataset_csv),
         }
 
-    reasoning_prefix = (
-        "Solve this step by step. Put your final answer in \\boxed{...} "
-        "or end with 'Final answer: ...'.\n\n"
-        if match_mode == "math"
-        else "Solve this step by step and end with 'Final answer: <number>'.\n\n"
-    )
-    revise_model_prefix = (
-        "Answer the following math question. Give only the final answer; "
-        "use \\boxed{...} when appropriate.\n\n"
-        if match_mode == "math"
-        else "Answer the following math question. Give only the final numeric answer."
-    )
+    if match_mode == "mcq":
+        reasoning_prefix = (
+            "You solve multiple-choice questions in science and mathematics. "
+            "The user message lists the stem and options (A)–(D). "
+            "Reason step by step. End with 'Final answer: X' where X is A, B, C, or D."
+        )
+        revise_model_prefix = (
+            "You solve multiple-choice questions. The user message includes four options. "
+            "End with a clear final line: 'Final answer: X' for X in A, B, C, D."
+        )
+    else:
+        reasoning_prefix = (
+            "Solve this step by step. Put your final answer in \\boxed{...} "
+            "or end with 'Final answer: ...'.\n\n"
+            if match_mode == "math"
+            else "Solve this step by step and end with 'Final answer: <number>'.\n\n"
+        )
+        revise_model_prefix = (
+            "Answer the following math question. Give only the final answer; "
+            "use \\boxed{...} when appropriate.\n\n"
+            if match_mode == "math"
+            else "Answer the following math question. Give only the final numeric answer."
+        )
 
     queries: list[Query] = []
     data_source = "unknown"
@@ -264,6 +297,20 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
             else:
                 queries = load_math500(max_samples=cfg.subset_size, cache_dir="data")
                 data_source = "huggingface_math500"
+        elif cfg.dataset == "gpqa_diamond":
+            from src.datasets.gpqa import load_gpqa_diamond
+
+            queries = load_gpqa_diamond(
+                max_samples=cfg.subset_size,
+                cache_dir="data",
+                prefer_official=cfg.gpqa_prefer_official,
+                jsonl_path=None,
+            )
+            data_source = (
+                "hf_Idavidrein_gpqa_gpqa_diamond_train"
+                if cfg.gpqa_prefer_official
+                else "hf_fallback_hendrydong_gpqa_diamond_mc"
+            )
         else:
             bundled = Path(
                 cfg.bundled_fallback
@@ -351,7 +398,7 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
             timeout_seconds=float(cfg.timeout),
             prompt_prefix=rtr_prefix,
         )
-        if cfg.include_reasoning_then_revise
+        if cfg.include_reasoning_then_revise and match_mode != "mcq"
         else None
     )
 
@@ -418,11 +465,25 @@ def build_real_routing_dataset(config: BuildConfig) -> dict[str, Any]:
             "status": "pending",
         }
         try:
-            reasoning_raw = model_r.generate(q.question)
+            if match_mode == "mcq":
+                mcq_opts = eval_options_for_task("mcq")
+                full_prompt = prompt_for_query(q, mcq_opts)
+                reasoning_raw = model_r.generate(full_prompt)
+            else:
+                full_prompt = q.question
+                reasoning_raw = model_r.generate(q.question)
             reasoning_ans = _predicted_from_reasoning_raw(reasoning_raw, match_mode)
-            parsed_r = extract_math_answer(reasoning_raw).strip() or reasoning_ans
+            parsed_r = (
+                extract_mcq_letter(reasoning_raw)
+                if match_mode == "mcq"
+                else (extract_math_answer(reasoning_raw).strip() or reasoning_ans)
+            )
 
-            dr = run_direct_plus_revise(model_rev, q.question)
+            dr = run_direct_plus_revise(
+                model_rev,
+                full_prompt,
+                answer_mode="multiple_choice" if match_mode == "mcq" else "numeric",
+            )
             revise_raw: list[Any] = list(dr["raw_outputs"])
             revise_ans = _predicted_from_revise_outputs(revise_raw, match_mode)
 

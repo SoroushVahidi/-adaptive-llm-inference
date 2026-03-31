@@ -96,7 +96,7 @@ committed outputs, and known limitations.
 
 ### Code quality
 
-- [ ] Run `pytest` and confirm 612 tests pass.
+- [ ] Run `pytest` and confirm **0 failures** (677 tests collected; some may be skipped under `skipif`).
 - [ ] Run `ruff check src/ tests/ scripts/` — pre-existing minor issues are
   documented; no new issues should be introduced.
 - [ ] Check that every script referenced in `REPRODUCIBILITY.md` actually

@@ -1,127 +1,46 @@
-# Blockers: AIME-2024 and GPQA Small Experiment Pass
+# AIME-2024 and GPQA: Small Pass Notes (Updated)
 
-**Date:** 2026-03-30  
-**Pass:** Small manuscript-strengthening experiment pass
+**Date:** 2026-03-31 (revised)
 
 ---
 
 ## Summary
 
-| Item | Status | Blocker? |
-|------|--------|----------|
-| AIME-2024 policy evaluation | ✅ COMPLETED | None |
-| AIME-2024 confidence baseline | ✅ COMPLETED | None |
-| Confidence baseline (main regimes) | ✅ COMPLETED | None |
-| GPQA-Diamond policy evaluation | ❌ BLOCKED | Missing routing features |
-| GPQA-Diamond confidence baseline | ❌ BLOCKED | Missing routing features |
-| Full GPQA (non-Diamond) | ❌ BLOCKED | Hub gating + missing routing features |
+| Item | Status | Notes |
+|------|--------|--------|
+| AIME-2024 policy evaluation | ✅ Completed | `outputs/small_pass/` |
+| Confidence baseline (four main regimes) | ✅ Completed | `outputs/baselines/confidence_threshold/` |
+| GPQA-Diamond **dataset access** (HF) | ✅ **Solved** | Use `load_dataset("Idavidrein/gpqa", "gpqa_diamond", ...)`. See `docs/GPQA_TOKEN_AND_ACCESS_DIAGNOSIS.md`. |
+| GPQA-Diamond **enriched routing CSV + policy eval** | 🔴 **Blocked on OpenAI auth (measured)** | Hub/load is fine. A full **198-query** paired build was run; **all** LLM calls returned **HTTP 401** `invalid_api_key` because the configured key was invalid (e.g. placeholder `sk-...` in `.env`). See **`docs/GPQA_EVALUATION_STATUS.md` §5a** — replace with a valid key and clear stale checkpoints before retry. |
+| Full GPQA (non-Diamond configs) | Optional / out of scope | Main manuscript uses Diamond-scale slice; other configs exist on the Hub but are not wired into this pipeline. |
 
 ---
 
-## Blocker 1: GPQA-Diamond — Missing Routing Features
+## GPQA: What changed vs the old “blocked” story
 
-### What was attempted
+**Previously:** Docs treated GPQA as unreachable because `load_dataset("Idavidrein/gpqa")` was called **without** a config name (which raises `ValueError`), or Hub access was unclear.
 
-Evaluate the routing policies (v5/v6/v7) and the confidence-threshold baseline
-on the GPQA-Diamond subset.
+**Now:**
 
-### What failed
+1. **Official data path** is `Idavidrein/gpqa` + config **`gpqa_diamond`** + split **`train`** (198 rows). Implemented in `src/datasets/gpqa.py` via `load_gpqa_diamond(..., prefer_official=True)`.
 
-The committed file `data/gpqa_diamond_normalized.jsonl` contains only:
-- `question`: question text
-- `choices`: list of 4 answer choices (A–D)
-- `answer`: correct answer label ("A" in all 198 rows — normalized to always-A)
-- `id`: HuggingFace row ID
+2. **Normalized JSONL only** (`data/gpqa_diamond_normalized.jsonl`) is insufficient for routing evaluation: it has no `reasoning_raw` or labels. That was correctly described as “dataset only.”
 
-It does **not** contain:
-- `reasoning_raw`: first-pass model response (needed for all routing policies)
-- `reasoning_correct`: correctness of first-pass (needed for evaluation)
-- `revise_correct`: correctness after revision (needed for evaluation)
-- `revise_helpful`: whether revision helped (needed for oracle)
-- `unified_confidence_score`: confidence signal (needed for confidence baseline)
-- Any of the 80+ routing features computed by `src/features/`
+3. **Manuscript-grade routing rows** are produced by the **same** paired pipeline as GSM8K: `src/data/build_real_routing_dataset.py` with `dataset="gpqa_diamond"` (MCQ prompts + `direct_plus_revise`). Outputs **`data/real_gpqa_diamond_routing_dataset_enriched.csv`** when using the recommended CLI in `docs/GPQA_EVALUATION_STATUS.md`.
 
-### Root cause
-
-The GPQA Diamond data was normalized from a public HuggingFace source
-(`hendrydong/gpqa_diamond_mc`, 198 rows) but was never processed through the
-routing dataset pipeline (`src/data/build_real_routing_dataset.py`), which
-calls GPT-4o-mini to generate model responses and computes all features.
-
-### What URL/path was tried
-
-- `data/gpqa_diamond_normalized.jsonl` — exists, 198 rows, but only 4 columns
-- No API calls were made in this pass (as per pass constraints)
-
-### What a manual step would unblock this
-
-```bash
-# Requires OPENAI_API_KEY in environment
-# Estimated: ~198 × 2 API calls (reasoning + revision) at gpt-4o-mini rate
-python scripts/run_build_real_routing_dataset.py \
-  --dataset gpqa \
-  --subset-size 100 \
-  --output-dataset-csv data/real_gpqa_routing_dataset.csv \
-  --output-dir outputs/real_gpqa_routing
-
-# After that, run the policy eval:
-python scripts/run_real_policy_eval.py \
-  --dataset-csv data/real_gpqa_routing_dataset.csv \
-  --output-dir outputs/gpqa_policy_eval
-```
-
-**Estimated cost:** ~200 API calls × 2 passes ≈ 400 gpt-4o-mini completions.
-At current pricing (~$0.0001/1K tokens, ~500 tokens each), this is well under $1.
-
-**Time estimate:** ~10–15 minutes with standard API rate limits.
+4. **Remaining blocker** is **not** Hugging Face access in principle — it is **successful OpenAI completions** during the paid LLM build. A trial run completed all indices but **0/198** queries succeeded (401 invalid key); see `outputs/real_gpqa_routing_dataset/gpqa_diamond_run_summary.json` and **`docs/GPQA_EVALUATION_STATUS.md` §5a**. Policy metrics are intentionally **not** committed until a valid key produces real rows.
 
 ---
 
-## Blocker 2: Full GPQA (Non-Diamond) — Hub Gating
+## Small-pass orchestrator (`run_small_pass.py`)
 
-### What failed
+GPQA is **not** executed inside `python scripts/run_small_pass.py` (that script targets AIME + main-regime confidence). The summary JSON records:
 
-The official GPQA dataset on HuggingFace Hub (`Idavidrein/gpqa`) is gated.
-As documented in `docs/GPQA_ACCESS_CHECK.md`, access was not granted to this
-account at the time of the pass.
-
-### What was tried
-
-- `load_dataset("Idavidrein/gpqa")` → `DatasetNotFoundError` (gated)
-- GitHub raw CSV URL → HTTP 404
-- Fallback: `hendrydong/gpqa_diamond_mc` → ✅ accessible (198 rows, used for normalization)
-
-### What would unblock this
-
-1. Request access on https://huggingface.co/datasets/Idavidrein/gpqa
-2. Once granted, `load_dataset("Idavidrein/gpqa", trust_remote_code=True)` with
-   `HF_TOKEN` in environment
-3. Then run the routing dataset pipeline as above
+- `"gpqa_status": "NOT_RUN_IN_SMALL_PASS"`
+- `"gpqa_note"` → pointer to `docs/GPQA_EVALUATION_STATUS.md`
 
 ---
 
-## What Was Completed Despite Blockers
+## No fake results
 
-Despite the GPQA blockers, the following was completed in this pass:
-
-1. **AIME-2024 policy evaluation** — all routing policies evaluated on the 30
-   committed AIME queries. Results: routing does not help (revise_helpful=0 for
-   all queries). See `docs/SMALL_EXPERIMENT_PASS_AIME_GPQA.md`.
-
-2. **Confidence-threshold baseline** — evaluated on all four main manuscript
-   regimes. Strong competitive baseline: matches or exceeds best adaptive policy
-   accuracy at similar cost. See `docs/CONFIDENCE_ROUTER_BASELINE.md`.
-
-3. **Combined comparison table** — `outputs/paper_tables_small_pass/small_pass_combined_comparison.csv`
-   shows all strategies side-by-side including confidence baseline.
-
-4. **Blocker infrastructure** — this document and the evaluation code correctly
-   report GPQA status as BLOCKED rather than producing fake results.
-
----
-
-## No Fake Results
-
-As required by the pass honesty rule, no GPQA routing evaluation results were
-fabricated. The `outputs/small_pass/small_pass_run_summary.json` correctly
-records `"gpqa_status": "BLOCKED"` with a clear explanation.
+The repository does **not** ship fabricated GPQA routing accuracies. After you run the build + eval commands in `docs/GPQA_EVALUATION_STATUS.md`, you may commit the resulting CSVs/JSON under the usual `data/` and `outputs/` allowlist in `.gitignore`.

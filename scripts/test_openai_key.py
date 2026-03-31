@@ -11,8 +11,16 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 import requests
+
+_REPO = Path(__file__).resolve().parent.parent
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+from src.utils.repo_env import try_load_repo_dotenv  # noqa: E402
+
+try_load_repo_dotenv()
 
 MODELS_URL = "https://api.openai.com/v1/models"
 TIMEOUT_SEC = 30

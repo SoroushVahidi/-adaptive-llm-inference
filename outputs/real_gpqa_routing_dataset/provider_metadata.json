@@ -1,0 +1,13 @@
+{
+  "provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "max_tokens": 512,
+  "timeout_seconds": 120,
+  "subset_size_requested": 198,
+  "dataset": "gpqa_diamond",
+  "answer_match_mode": "mcq",
+  "regime_label": "gpqa_diamond_198",
+  "gsm8k_data_file": null,
+  "math500_data_file": null,
+  "gpqa_prefer_official": true
+}

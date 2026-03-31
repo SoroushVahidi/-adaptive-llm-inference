@@ -1,0 +1,20 @@
+{
+  "run_status": "COMPLETED",
+  "aime_status": "COMPLETED",
+  "gpqa_status": "BLOCKED",
+  "gpqa_blocker": "GPQA-Diamond routing dataset lacks model responses and routing features. API calls required to generate them. See docs/BLOCKERS_AIME_GPQA_SMALL_PASS.md.",
+  "confidence_baseline_regimes": [
+    "gsm8k_random_100",
+    "hard_gsm8k_100",
+    "hard_gsm8k_b2",
+    "math500_100"
+  ],
+  "outputs": {
+    "aime_summary": "outputs/small_pass/aime_summary.json",
+    "aime_policy_comparison": "outputs/small_pass/aime_policy_comparison.csv",
+    "confidence_threshold_sweep": "outputs/small_pass/confidence_threshold/confidence_threshold_sweep.csv",
+    "combined_comparison_table": "outputs/paper_tables_small_pass/small_pass_combined_comparison.csv",
+    "aime_table": "outputs/paper_tables_small_pass/aime_policy_comparison.csv",
+    "confidence_table": "outputs/paper_tables_small_pass/confidence_baseline_main_regimes.csv"
+  }
+}

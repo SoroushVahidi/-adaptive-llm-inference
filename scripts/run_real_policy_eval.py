@@ -19,8 +19,18 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--dataset-csv", default="data/real_gsm8k_routing_dataset.csv")
     p.add_argument("--output-dir", default="outputs/real_policy_eval")
+    p.add_argument(
+        "--conf-target-cost",
+        type=float,
+        default=1.2,
+        help="Target avg cost for confidence-threshold operating point (enriched CSVs only)",
+    )
     args = p.parse_args()
-    r = run_real_policy_eval(dataset_csv=args.dataset_csv, output_dir=args.output_dir)
+    r = run_real_policy_eval(
+        dataset_csv=args.dataset_csv,
+        output_dir=args.output_dir,
+        conf_target_cost=args.conf_target_cost,
+    )
     print(json.dumps(r["summary"], indent=2))
     return 0
 

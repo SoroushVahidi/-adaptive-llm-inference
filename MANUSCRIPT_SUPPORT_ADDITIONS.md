@@ -11,7 +11,7 @@ no new LLM calls or API keys are required.
 ### 1. Confidence-Threshold Routing Baseline
 
 **Source:** `src/baselines/confidence_threshold_router.py`
-**Script:** `scripts/run_confidence_threshold_baseline.py`
+**Script:** `scripts/run_confidence_baseline.py`
 **Outputs:** `outputs/baselines/confidence_threshold/`
 
 Uses `unified_confidence_score` (already present in all four enriched routing
@@ -146,7 +146,7 @@ confusion between deployable policies and budget-sweep summaries.
 pip install -e ".[dev]"
 
 # Run all new additions
-python scripts/run_confidence_threshold_baseline.py
+python scripts/run_confidence_baseline.py
 python scripts/run_learned_router_baseline.py
 python scripts/run_uncertainty_analysis.py
 python scripts/run_clarification_export.py
@@ -167,6 +167,12 @@ outputs/baselines/confidence_threshold/
 ├── confidence_threshold_summary.csv
 ├── confidence_threshold_sweep.csv
 └── confidence_threshold_summary.json
+
+outputs/paper_tables_small_pass/   ← from `scripts/run_small_pass.py` (manuscript-oriented tables: AIME + confidence baseline + combined comparison)
+├── confidence_baseline_main_regimes.csv
+├── aime_policy_comparison.csv
+├── small_pass_combined_comparison.csv
+└── small_pass_run_summary.json
 
 outputs/baselines/learned_router/
 ├── learned_router_summary.csv
@@ -192,4 +198,4 @@ None. All items requested are fully implemented:
 - Learned router baseline: ✅ using 48 pre-computed features from committed data
 - Uncertainty analysis: ✅ paired bootstrap, 10,000 replicates, no API needed
 - Clarification export: ✅ reads committed artifact CSVs, produces CSV + LaTeX + NOTES.md
-- Tests: ✅ 45 tests, all passing, no regressions to existing 612 tests
+- Tests: ✅ 45 tests in `tests/test_manuscript_support.py`, all passing; full suite 677 tests collected, 0 failures (`pytest`; optional skips under `skipif`)

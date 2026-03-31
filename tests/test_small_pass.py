@@ -159,7 +159,7 @@ class TestSmallPassCombinedEval:
         )
         assert result["run_status"]["run_status"] == "COMPLETED"
         assert result["run_status"]["aime_status"] == "COMPLETED"
-        assert result["run_status"]["gpqa_status"] == "BLOCKED"
+        assert result["run_status"]["gpqa_status"] == "NOT_RUN_IN_SMALL_PASS"
 
     def test_combined_eval_produces_tables(self, tmp_path: Path) -> None:
         from src.evaluation.small_pass_combined_eval import run_small_pass
@@ -169,12 +169,12 @@ class TestSmallPassCombinedEval:
         assert (tables / "aime_policy_comparison.csv").exists()
         assert (tables / "confidence_baseline_main_regimes.csv").exists()
 
-    def test_gpqa_always_blocked(self, tmp_path: Path) -> None:
+    def test_gpqa_is_separate_pipeline(self, tmp_path: Path) -> None:
         from src.evaluation.small_pass_combined_eval import run_small_pass
 
         result = run_small_pass(
             output_dir=tmp_path / "small_pass",
             tables_dir=tmp_path / "tables",
         )
-        assert result["run_status"]["gpqa_status"] == "BLOCKED"
-        assert "gpqa_blocker" in result["run_status"]
+        assert result["run_status"]["gpqa_status"] == "NOT_RUN_IN_SMALL_PASS"
+        assert "gpqa_note" in result["run_status"]

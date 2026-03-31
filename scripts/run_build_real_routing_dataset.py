@@ -78,6 +78,10 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from src.utils.repo_env import try_load_repo_dotenv  # noqa: E402
+
+try_load_repo_dotenv()
+
 from src.data.build_real_routing_dataset import (  # noqa: E402
     BuildConfig,
     build_real_routing_dataset,
@@ -190,6 +194,23 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Override oracle strategies to run.  Defaults to all core oracle "
             "strategies: " + ", ".join(CORE_ORACLE_STRATEGIES)
+        ),
+    )
+    parser.add_argument(
+        "--dataset",
+        choices=["gsm8k", "gpqa_diamond"],
+        default="gsm8k",
+        help=(
+            "Paired-outcomes source: gsm8k (default) or gpqa_diamond "
+            "(official HF Idavidrein/gpqa gpqa_diamond; requires HF_TOKEN if gated)."
+        ),
+    )
+    parser.add_argument(
+        "--gpqa-prefer-mirror",
+        action="store_true",
+        help=(
+            "For --dataset gpqa_diamond: load hendrydong/gpqa_diamond_mc instead of "
+            "the official Hub dataset."
         ),
     )
     parser.add_argument(
@@ -310,18 +331,38 @@ def _load_queries(subset_size: int, gsm8k_data_file: str | None) -> list[Any]:
 
 def _run_paired_outcomes(args: argparse.Namespace, timestamp: str) -> None:
     """Reasoning + direct_plus_revise (+ optional RTR) with feature columns."""
-    output_dir = Path(args.output_dir)
     data_file = args.gsm8k_data_file
     if data_file is not None and not Path(data_file).exists():
         data_file = None
 
-    out_csv = args.output_dataset_csv
-    if out_csv is None:
-        out_csv = "data/real_gsm8k_routing_dataset.csv"
+    if args.dataset == "gpqa_diamond":
+        output_dir = Path(args.output_dir)
+        if str(args.output_dir) == str(_DEFAULT_OUTPUT_DIR):
+            output_dir = Path("outputs/real_gpqa_routing_dataset")
+        out_csv = args.output_dataset_csv or "data/real_gpqa_diamond_routing_dataset_enriched.csv"
+        summary_fn = "gpqa_diamond_run_summary.json"
+        per_query_fn = "gpqa_per_query_outputs.csv"
+        regime = (
+            args.regime_label
+            if args.regime_label != "gsm8k_baseline"
+            else "gpqa_diamond_198"
+        )
+        ds_name: str = "gpqa_diamond"
+        gpqa_official = not args.gpqa_prefer_mirror
+        gsm_path = None
+    else:
+        output_dir = Path(args.output_dir)
+        out_csv = args.output_dataset_csv or "data/real_gsm8k_routing_dataset.csv"
+        summary_fn = "gsm8k_subset_run_summary.json"
+        per_query_fn = "gsm8k_per_query_outputs.csv"
+        regime = args.regime_label
+        ds_name = "gsm8k"
+        gpqa_official = True
+        gsm_path = Path(data_file) if data_file else None
 
     result = build_real_routing_dataset(
         BuildConfig(
-            gsm8k_data_file=Path(data_file) if data_file else None,
+            gsm8k_data_file=gsm_path,
             subset_size=args.subset_size,
             output_dir=output_dir,
             output_dataset_csv=Path(out_csv),
@@ -329,11 +370,12 @@ def _run_paired_outcomes(args: argparse.Namespace, timestamp: str) -> None:
             max_tokens=int(args.max_tokens),
             timeout=int(args.timeout),
             bundled_fallback=Path(args.bundled_fallback),
-            dataset="gsm8k",
-            summary_filename="gsm8k_subset_run_summary.json",
-            per_query_csv_filename="gsm8k_per_query_outputs.csv",
-            regime_label=args.regime_label,
+            dataset=ds_name,  # type: ignore[arg-type]
+            summary_filename=summary_fn,
+            per_query_csv_filename=per_query_fn,
+            regime_label=regime,
             include_reasoning_then_revise=args.include_reasoning_then_revise,
+            gpqa_prefer_official=gpqa_official,
         )
     )
     print(json.dumps(result["summary"], indent=2))

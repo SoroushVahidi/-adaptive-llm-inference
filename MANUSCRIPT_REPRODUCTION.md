@@ -36,8 +36,9 @@ All main-paper claims are grounded in exactly these four regimes:
 | `hard_gsm8k_b2` | Hard GSM8K (batch 2) | 100 | `data/real_hard_gsm8k_b2_routing_dataset_enriched.csv` |
 | `math500_100` | MATH500 | 100 | `data/real_math500_routing_dataset_enriched.csv` |
 
-> AIME-2024 (30 queries) is present in `data/` but policy evaluation was not
-> run on it; it is omitted from main-paper policy tables.
+> AIME-2024 (30 queries) is present in `data/`. It is **omitted from main-paper
+> policy tables**; an exploratory offline evaluation is committed under
+> `outputs/small_pass/` (see `docs/SMALL_EXPERIMENT_PASS_AIME_GPQA.md`).
 
 ---
 
@@ -89,11 +90,19 @@ outputs/
 ├── oracle_routing_eval/       ← oracle upper-bound analysis
 ├── budget_sweep/              ← budget-vs-accuracy curve CSVs
 ├── cross_regime_comparison/   ← final cross-regime summary
-└── baselines/                 ← baseline strategy comparison JSON
+├── baselines/                 ← baseline strategy comparison JSON
+├── small_pass/                ← exploratory AIME-2024 policy eval (offline)
+└── paper_tables_small_pass/   ← supplementary tables (AIME + confidence baseline)
 ```
 
 Raw LLM response files (`raw_responses.jsonl`) are also committed for full
 traceability but are not intended to be cited directly.
+
+**Supplementary (not main-paper claims):** `outputs/small_pass/` and
+`outputs/paper_tables_small_pass/` are produced offline by
+`python scripts/run_small_pass.py` (no API key). They document the
+confidence-threshold baseline and an exploratory AIME-2024 comparison; see
+`docs/SMALL_EXPERIMENT_PASS_AIME_GPQA.md`.
 
 ---
 
@@ -107,11 +116,11 @@ pip install -e ".[dev]"
 
 ### Step 1 — Offline verification (no API key)
 
-Run the full test suite (offline, ~10 s):
+Run the full test suite (offline; tens of seconds on a typical machine):
 
 ```bash
 pytest
-# Expected: 612 passed, 5 skipped
+# Expected: 677 tests collected; 0 failures (some tests may be skipped under skipif, e.g. HF Hub)
 ```
 
 Run the offline pipeline end-to-end:
@@ -144,6 +153,11 @@ python3 scripts/run_oracle_strategy_eval.py \
 python3 scripts/run_real_budget_sweep.py \
     --config configs/real_budget_sweep_gsm8k.yaml
 # outputs → outputs/real_budget_sweep/
+
+# Supplementary small-pass (AIME exploratory eval + confidence-threshold tables; no API key)
+python3 scripts/run_small_pass.py
+# outputs → outputs/small_pass/, outputs/paper_tables_small_pass/
+# (confidence-only baseline alone: python3 scripts/run_confidence_baseline.py → outputs/baselines/confidence_threshold/)
 ```
 
 ### Step 3 — Regenerate paper tables and figures (offline)
@@ -192,8 +206,8 @@ manuscript claims**:
 | TALE / BEST-Route baseline wrappers | `src/baselines/external/`, `external/` | Stubs only; external repos not included |
 | Simulated allocation sweep | `scripts/run_simulated_sweep.py`, `configs/simulated_sweep.yaml` | BLOCKED (no committed outputs); not cited as final |
 | Oracle subset evaluation (blocked) | `scripts/run_oracle_subset_eval.py` | BLOCKED; not cited as final |
-| GPQA-Diamond experiments | `data/gpqa_diamond_normalized.jsonl` | Dataset present but no policy eval committed |
-| AIME-2024 policy evaluation | — | Not run; omitted from main tables |
+| GPQA-Diamond experiments | `data/gpqa_diamond_normalized.jsonl`, `docs/GPQA_EVALUATION_STATUS.md` | Normalized labels committed; enriched routing eval is a **separate** API build (`--dataset gpqa_diamond`) |
+| AIME-2024 policy evaluation | `outputs/small_pass/`, `docs/SMALL_EXPERIMENT_PASS_AIME_GPQA.md` | Exploratory small-pass outputs committed; omitted from main-paper tables |
 | Consistency benchmark | `data/consistency_benchmark.json` | Diagnostic only |
 | Internal working notes | `docs/internal/` | AI-agent planning logs; not for external readers |
 

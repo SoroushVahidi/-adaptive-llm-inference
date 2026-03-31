@@ -28,7 +28,7 @@ cost.
 
 ```bash
 pytest
-# Expected: 612 passed, 5 skipped, ~10 s
+# Expected: 677 tests collected; 0 failures (optional skips; tens of seconds on a typical machine)
 ```
 
 ### A2. Baseline pipeline sanity check (dummy model)

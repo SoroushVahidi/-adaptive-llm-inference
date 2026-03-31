@@ -1,0 +1,5 @@
+regime,n,reasoning_greedy_acc,always_revise_acc,best_adaptive_policy_acc,best_adaptive_policy_cost,oracle_acc,confidence_router_acc,confidence_router_cost,confidence_router_threshold,confidence_router_revise_rate
+hard_gsm8k_100,100,0.79,0.86,0.82,1.46,0.91,0.89,1.13,0.4,0.13
+hard_gsm8k_b2,100,0.83,0.91,0.91,1.41,0.92,0.89,1.09,0.4,0.09
+math500_100,100,0.64,0.64,0.65,1.03,0.7,0.66,1.06,0.25,0.06
+gsm8k_random_100,100,0.9,0.92,0.92,1.18,0.92,0.92,1.11,0.65,0.11

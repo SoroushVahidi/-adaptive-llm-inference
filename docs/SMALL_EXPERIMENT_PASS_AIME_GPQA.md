@@ -26,12 +26,11 @@ plus confidence/uncertainty threshold router baseline.
 | Item | Status |
 |------|--------|
 | Normalized data file | ✅ `data/gpqa_diamond_normalized.jsonl` (198 questions) |
-| Dataset loaders | ✅ `src/datasets/gpqa.py`, `src/datasets/gpqa_diamond.py` |
-| Model responses | ❌ Missing — not in committed data |
-| Routing features | ❌ Missing — not computed (no `unified_confidence_score` etc.) |
-| Policy evaluation | ❌ BLOCKED — see §4 and `docs/BLOCKERS_AIME_GPQA_SMALL_PASS.md` |
+| Dataset loaders | ✅ `src/datasets/gpqa.py` (official `Idavidrein/gpqa` + `gpqa_diamond`), `src/datasets/gpqa_diamond.py` |
+| Hugging Face access | ✅ Use `load_dataset("Idavidrein/gpqa", "gpqa_diamond", ...)` (config required) |
+| Enriched routing CSV + policy eval | 🔴 **Not produced (API 401)** — pipeline exists; a **198-query** build was attempted and **every** call failed with **invalid_api_key** (placeholder/invalid `OPENAI_API_KEY`). See **`docs/GPQA_EVALUATION_STATUS.md` §5a**. |
 
-**Verdict: present but incomplete → policy evaluation blocked (see blockers doc).**
+**Verdict:** Dataset access and loaders are **solved**; manuscript-grade routing rows require a **valid** OpenAI key and a clean retry after clearing failed-run checkpoints (see GPQA status doc).
 
 ### Confidence/Uncertainty Threshold Router
 
@@ -139,28 +138,27 @@ and the per-regime sweeps in `outputs/baselines/confidence_threshold/`).
 
 ---
 
-## 4. GPQA-Diamond: Blocked
+## 4. GPQA-Diamond: Manuscript pipeline (see dedicated doc)
 
-See `docs/BLOCKERS_AIME_GPQA_SMALL_PASS.md` for the full blocker report.
+**Authoritative commands:** `docs/GPQA_EVALUATION_STATUS.md`
 
-**Summary:** The committed `data/gpqa_diamond_normalized.jsonl` contains only
-question text, answer choices, and correct answer labels. It does **not** contain:
-- Model responses (no `reasoning_raw`)
-- Correctness flags (`reasoning_correct`, `revise_correct`)
-- Routing features (`unified_confidence_score`, etc.)
+**Summary:** `data/gpqa_diamond_normalized.jsonl` is labels-only. Enriched routing
+evaluation uses the same paired builder as GSM8K (see `src/data/build_real_routing_dataset.py`,
+`dataset="gpqa_diamond"`). **Requires `OPENAI_API_KEY`.**
 
-Generating these requires API calls to GPT-4o-mini (or another LLM). This is the
-same blocker documented in `docs/GPQA_ACCESS_CHECK.md` — the GPQA normalized file
-was obtained from a public fallback source (`hendrydong/gpqa_diamond_mc`) but
-never processed through the routing dataset pipeline.
-
-**To unblock GPQA evaluation:**
 ```bash
-# Requires OPENAI_API_KEY in environment
 python scripts/run_build_real_routing_dataset.py \
-  --dataset gpqa \
-  --output-dataset-csv data/real_gpqa_routing_dataset.csv
+  --paired-outcomes \
+  --dataset gpqa_diamond \
+  --subset-size 198 \
+  --output-dataset-csv data/real_gpqa_diamond_routing_dataset_enriched.csv
+
+python scripts/run_real_policy_eval.py \
+  --dataset-csv data/real_gpqa_diamond_routing_dataset_enriched.csv \
+  --output-dir outputs/real_gpqa_policy_eval
 ```
+
+**Blockers doc (historical context):** `docs/BLOCKERS_AIME_GPQA_SMALL_PASS.md`
 
 ---
 
@@ -190,6 +188,11 @@ python scripts/run_confidence_baseline.py --include-aime
 | `outputs/paper_tables_small_pass/small_pass_combined_comparison.csv` | Combined table |
 | `outputs/paper_tables_small_pass/aime_policy_comparison.csv` | AIME table |
 | `outputs/paper_tables_small_pass/confidence_baseline_main_regimes.csv` | Conf baseline |
+
+The confidence-threshold sweep CSVs are also written under
+`outputs/small_pass/confidence_threshold/` when you run `run_small_pass.py`
+(the same numeric content as `scripts/run_confidence_baseline.py`, which writes
+to `outputs/baselines/confidence_threshold/`).
 
 ### Tests
 

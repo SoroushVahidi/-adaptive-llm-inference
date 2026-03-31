@@ -6,8 +6,9 @@ This module orchestrates:
 2. Confidence-threshold baseline sweep across all four main manuscript regimes.
 3. Combined paper-tables export.
 
-GPQA-Diamond is audited for status but NOT evaluated here — see the blocker
-report at docs/BLOCKERS_AIME_GPQA_SMALL_PASS.md.
+GPQA-Diamond is **not** part of this orchestrator; run the dedicated pipeline
+(``scripts/run_build_real_routing_dataset.py --paired-outcomes --dataset gpqa_diamond``)
+and see ``docs/GPQA_EVALUATION_STATUS.md``.
 
 Public API
 ----------
@@ -157,10 +158,10 @@ def run_small_pass(
     run_summary: dict[str, Any] = {
         "run_status": "COMPLETED",
         "aime_status": aime_summary.get("run_status", "UNKNOWN"),
-        "gpqa_status": "BLOCKED",
-        "gpqa_blocker": (
-            "GPQA-Diamond routing dataset lacks model responses and routing features. "
-            "API calls required to generate them. See docs/BLOCKERS_AIME_GPQA_SMALL_PASS.md."
+        "gpqa_status": "NOT_RUN_IN_SMALL_PASS",
+        "gpqa_note": (
+            "GPQA-Diamond manuscript eval is a separate entry point; see "
+            "docs/GPQA_EVALUATION_STATUS.md (build + policy eval scripts)."
         ),
         "confidence_baseline_regimes": list(conf_by_regime.keys()),
         "outputs": {

@@ -23,9 +23,12 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
+
+_LOG = logging.getLogger(__name__)
 
 import pandas as pd
 
@@ -39,6 +42,7 @@ REGIME_FILES: dict[str, str] = {
     "hard_gsm8k_100": "data/real_hard_gsm8k_routing_dataset_enriched.csv",
     "hard_gsm8k_b2": "data/real_hard_gsm8k_b2_routing_dataset_enriched.csv",
     "math500_100": "data/real_math500_routing_dataset_enriched.csv",
+    "gpqa_diamond_198": "data/real_gpqa_diamond_routing_dataset_enriched.csv",
 }
 
 #: Column used as the routing confidence signal.
@@ -211,6 +215,14 @@ def sweep_and_summarise(
     sweep_rows: list[dict] = []
 
     for regime in files:
+        csv_path = Path(files[regime])
+        if not csv_path.is_file():
+            _LOG.warning(
+                "Skipping regime %s: enriched routing CSV not found (%s)",
+                regime,
+                csv_path,
+            )
+            continue
         df = load_regime_df(regime, files)
         sweep = sweep_thresholds(df, thresholds)
         op = choose_operating_point(sweep, target_cost=target_cost)
