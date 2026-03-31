@@ -1,5 +1,9 @@
 # State of Evidence Audit (Repository-grounded)
 
+> OUTDATED / SUPERSEDED (2026-03-31): This audit predates currently committed output artifacts.
+> Use `docs/FINAL_CONSISTENCY_AUDIT.md` for current consistency status and
+> `outputs/paper_tables_final/FINAL_ARTIFACT_EXPORT_REPORT.md` for the final export snapshot.
+
 **Date:** 2026-03-28  
 **Scope:** Full repository audit focused on scientific evidence status, not method redesign.
 

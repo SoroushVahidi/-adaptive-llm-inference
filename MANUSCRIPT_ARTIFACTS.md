@@ -1,5 +1,9 @@
 # Manuscript Artifacts
 
+> OUTDATED / SUPERSEDED (2026-03-31): Use `docs/CANONICAL_MANUSCRIPT_DECISIONS.md` and
+> `outputs/paper_tables_final/` + `outputs/paper_figures_final/` as the authoritative manuscript package.
+> This file is retained as historical inventory.
+
 This document inventories all committed experiment outputs that support the
 manuscript.  Files are marked as **Final** (suitable for citation) or
 **Partial** (preliminary; should not be cited without additional verification).

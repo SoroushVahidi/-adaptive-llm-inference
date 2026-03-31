@@ -1,0 +1,1 @@
+Graphic abstract: A lightweight adaptive router chooses between cheap reasoning and revision, improving the accuracy-cost tradeoff over always-cheap while using less cost than always-revise. The effect is regime-dependent (stronger on hard regimes with higher revise-helpful rates), with oracle routing showing remaining headroom.

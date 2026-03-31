@@ -1,5 +1,9 @@
 # Paper Strengthening From Repository
 
+> OUTDATED / SUPERSEDED (2026-03-31): This note is a historical strengthening pass.
+> For canonical current decisions, use `docs/CANONICAL_MANUSCRIPT_DECISIONS.md`
+> and final exported assets under `outputs/paper_tables_final/` and `outputs/paper_figures_final/`.
+
 This note is written without access to the manuscript. It summarises, based solely on
 repository artifacts, what the paper likely claims, what new evidence was added in this
 coding pass, the main caveats, and which new artifacts are most suitable for a revision.

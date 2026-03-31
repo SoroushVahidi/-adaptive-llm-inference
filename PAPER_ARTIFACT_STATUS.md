@@ -1,5 +1,10 @@
 # Paper Artifact Status
 
+> OUTDATED / SUPERSEDED (2026-03-31): The canonical final manuscript assets are now
+> generated into `outputs/paper_tables_final/` and `outputs/paper_figures_final/`
+> via `scripts/generate_final_manuscript_artifacts.py`.
+> See `docs/CANONICAL_MANUSCRIPT_DECISIONS.md` and `docs/FINAL_CONSISTENCY_AUDIT.md`.
+
 This file explicitly lists every major artifact in the repository and its
 role relative to the manuscript.  Use this to verify which outputs back
 specific paper claims.

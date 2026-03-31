@@ -117,6 +117,10 @@ outputs/*
 !outputs/real_gpqa_policy_eval/**
 !outputs/feature_method_fit/
 !outputs/feature_method_fit/**
+!outputs/paper_tables_final/
+!outputs/paper_tables_final/**
+!outputs/paper_figures_final/
+!outputs/paper_figures_final/**
 
 ### Legacy results folder ###
 results/

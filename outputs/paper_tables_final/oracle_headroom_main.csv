@@ -1,0 +1,5 @@
+regime,always_rg_accuracy,always_dpr_accuracy,oracle_accuracy,revise_helpful_rate,best_adaptive_policy,best_adaptive_accuracy,adaptive_to_oracle_gap,rg_to_oracle_gap,dpr_to_oracle_gap
+gsm8k_random_100,0.9000,0.9200,0.9200,0.0200,adaptive_policy_v5,0.9200,0.0000,0.0200,0.0000
+hard_gsm8k_100,0.7900,0.8600,0.9100,0.1200,adaptive_policy_v5,0.8600,0.0500,0.1200,0.0500
+hard_gsm8k_b2,0.8300,0.9100,0.9200,0.0900,adaptive_policy_v5,0.9100,0.0100,0.0900,0.0100
+math500_100,0.6400,0.6400,0.7000,0.0600,adaptive_policy_v5,0.6600,0.0400,0.0600,0.0600

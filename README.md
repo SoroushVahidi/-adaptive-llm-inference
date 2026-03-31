@@ -1,5 +1,17 @@
 # Adaptive LLM Inference
 
+## Manuscript Quickstart
+
+- Start here: `FINAL_MANUSCRIPT_QUICKSTART.md`
+- Final main-paper regimes: `gsm8k_random_100`, `hard_gsm8k_100`, `hard_gsm8k_b2`, `math500_100`
+- Headline adaptive policy: `adaptive_policy_v5` (with v6/v7 reported transparently)
+- Final tables: `outputs/paper_tables_final/`
+- Final figures + graphic abstract: `outputs/paper_figures_final/`
+- Regenerate canonical assets (offline, deterministic):
+  - `python3 scripts/generate_final_manuscript_artifacts.py`
+
+Older `paper_tables*` / `paper_figures*` directories are historical intermediates.
+
 **Adaptive test-time compute allocation for LLM reasoning under budget constraints.**
 
 Submitted to *Knowledge-Based Systems*.
@@ -67,11 +79,14 @@ Most analysis steps run **offline without any API key**.
 
 | File | Purpose |
 |------|---------|
+| [`FINAL_MANUSCRIPT_QUICKSTART.md`](FINAL_MANUSCRIPT_QUICKSTART.md) | **Best starting point** for manuscript writing and asset usage |
+| [`FINAL_MANUSCRIPT_ASSET_INDEX.md`](FINAL_MANUSCRIPT_ASSET_INDEX.md) | Single index of final manuscript-support assets |
 | [`MANUSCRIPT_REPRODUCTION.md`](MANUSCRIPT_REPRODUCTION.md) | **Start here** — paper scope, regimes, tables/figures, reproduction commands |
-| [`PAPER_ARTIFACT_STATUS.md`](PAPER_ARTIFACT_STATUS.md) | Status of every artifact: main-paper, appendix, exploratory, or incomplete |
+| [`docs/CANONICAL_MANUSCRIPT_DECISIONS.md`](docs/CANONICAL_MANUSCRIPT_DECISIONS.md) | Canonical policy/regime and main-vs-supplementary decisions |
+| [`docs/FINAL_CONSISTENCY_AUDIT.md`](docs/FINAL_CONSISTENCY_AUDIT.md) | Final consistency findings and applied resolutions |
 | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | Full command reference for all manuscript experiments |
 | [`DATA_AVAILABILITY.md`](DATA_AVAILABILITY.md) | Dataset provenance and access instructions |
-| [`MANUSCRIPT_ARTIFACTS.md`](MANUSCRIPT_ARTIFACTS.md) | Inventory of committed tables and figures |
+| [`docs/FINAL_REPO_STATUS.md`](docs/FINAL_REPO_STATUS.md) | Final submission-oriented repo status and safe-claim boundaries |
 | [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) | Research goal, MCKP framing, and baseline families |
 | [`docs/BASELINE_TRACKER.md`](docs/BASELINE_TRACKER.md) | Status of every comparison baseline |
 

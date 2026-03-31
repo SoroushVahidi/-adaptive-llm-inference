@@ -1,5 +1,10 @@
 # Final Manuscript Table and Figure Index
 
+> OUTDATED / SUPERSEDED (2026-03-31): This index references `paper_tables_cleaned` /
+> `paper_figures_cleaned`, which are no longer the authoritative final package.
+> Use `outputs/paper_tables_final/`, `outputs/paper_figures_final/`, and
+> `docs/CANONICAL_MANUSCRIPT_DECISIONS.md`.
+
 **Purpose:** Definitive list of all publication-ready tables and figures, their file paths, section
 assignments, and main-paper vs appendix status.
 

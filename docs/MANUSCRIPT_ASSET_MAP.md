@@ -1,5 +1,9 @@
 # Manuscript asset map — binary real-routing track
 
+> OUTDATED / SUPERSEDED (2026-03-31): superseded by
+> `FINAL_MANUSCRIPT_QUICKSTART.md` and `FINAL_MANUSCRIPT_ASSET_INDEX.md`.
+> This file remains useful for background provenance only.
+
 **Grounding:** Paths and numbers below refer to files present in this repository snapshot as of authoring. Export manifests are authoritative for **which paper exports succeeded** in the last non-strict run (`outputs/paper_tables/export_manifest.json`, `outputs/paper_figures/export_manifest.json`).
 
 **Scope:** Binary real routing (reasoning vs revise, adaptive policies v5–v7, fixed baselines in policy eval). Multi-action is out of scope here.

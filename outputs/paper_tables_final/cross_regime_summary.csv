@@ -1,0 +1,5 @@
+regime,rg_acc,dpr_acc,adaptive_v5_acc,adaptive_v6_acc,adaptive_v7_acc,best_adaptive_policy,best_adaptive_acc,best_adaptive_cost,oracle_acc,oracle_gap_vs_best_adaptive,revise_helpful_rate
+gsm8k_random_100,0.9,0.92,0.92,0.92,0.92,adaptive_policy_v6,0.92,1.18,0.92,0.0,0.02
+hard_gsm8k_100,0.79,0.86,0.86,0.81,0.82,adaptive_policy_v5,0.86,1.53,0.91,0.05,0.12
+hard_gsm8k_b2,0.83,0.91,0.91,0.89,0.89,adaptive_policy_v5,0.91,1.41,0.92,0.01,0.09
+math500_100,0.64,0.64,0.66,0.65,0.65,adaptive_policy_v5,0.66,1.71,0.7,0.04,0.06

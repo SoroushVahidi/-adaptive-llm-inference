@@ -1,5 +1,9 @@
 # Final Manuscript Asset Map
 
+> OUTDATED / SUPERSEDED (2026-03-31): Superseded by canonical final asset directories
+> `outputs/paper_tables_final/` and `outputs/paper_figures_final/`,
+> plus `docs/CANONICAL_MANUSCRIPT_DECISIONS.md`.
+
 **Purpose:** Writing-oriented map of all manuscript-ready assets that currently exist on disk.
 Grounded in `outputs/paper_tables/`, `outputs/paper_figures/`, and the upstream result artifacts
 they summarise. No new experiments were run to produce this document.

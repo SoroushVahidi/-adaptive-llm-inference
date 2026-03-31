@@ -1,5 +1,11 @@
 # Manuscript Support Additions
 
+> OUTDATED / SUPERSEDED (2026-03-31): this revision log is historical.
+> For authoritative current manuscript assets, use:
+> - `FINAL_MANUSCRIPT_QUICKSTART.md`
+> - `FINAL_MANUSCRIPT_ASSET_INDEX.md`
+> - `outputs/paper_tables_final/` and `outputs/paper_figures_final/`
+
 This document records all additions made to support the KBS manuscript revision.
 Every artifact is grounded in the committed routing datasets and experiment outputs —
 no new LLM calls or API keys are required.

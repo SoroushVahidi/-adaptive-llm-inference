@@ -1,0 +1,5 @@
+regime,n,both_correct,rg_only_correct,dpr_only_correct,both_wrong,frac_both_correct,frac_rg_only,frac_dpr_only,frac_both_wrong,routing_headroom
+gsm8k_random_100,100,90,0,2,8,0.9000,0.0000,0.0200,0.0800,0.0200
+hard_gsm8k_100,100,74,5,12,9,0.7400,0.0500,0.1200,0.0900,0.1200
+hard_gsm8k_b2,100,82,1,9,8,0.8200,0.0100,0.0900,0.0800,0.0900
+math500_100,100,58,6,6,30,0.5800,0.0600,0.0600,0.3000,0.0600
