@@ -19,7 +19,6 @@ import os
 import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -84,7 +83,7 @@ def paired_bootstrap_ci(
     n_resamples: int = N_BOOTSTRAP,
     seed: int = RNG_SEED,
     ci: float = CI_LEVEL,
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """Return (observed_diff, ci_lower, ci_upper) for mean(a) - mean(b).
 
     Sampling is paired by query: each resample draws *rows* with replacement

@@ -1,0 +1,63 @@
+# configs/best_route_adapted.yaml
+#
+# Adapted BEST-Route baseline for the four canonical manuscript regimes.
+#
+# Paper:  BEST-Route: Adaptive LLM Routing with Test-Time Optimal Compute
+#         Ding et al., ICML 2025 — https://arxiv.org/abs/2506.22716
+# Code:   https://github.com/microsoft/best-route-llm
+#
+# This config runs BESTRouteAdaptedBaseline, which is a documented
+# compatibility adaptation of the official BEST-Route algorithm mapped to
+# this repository's binary cheap-vs-revise routing setting.
+# It is NOT the official BEST-Route code (see docs/BEST_ROUTE_INTEGRATION.md
+# for the full integration document and deviation notes).
+#
+# Faithfulness notes:
+#   - Bubble inference pattern: faithful to official code (inference_mode=bubble).
+#   - Binary action space: {reasoning_greedy (cost 1), direct_plus_revise (cost 2)}.
+#   - Feature-based routing score: deviation from official DeBERTa router (DEV-2).
+#   - Single model: deviation from official multi-LLM setup (DEV-4).
+#
+# Usage (dummy model — no API calls):
+#   python scripts/run_strong_baselines.py --config configs/best_route_adapted.yaml
+#
+# Usage (real model — requires API key):
+#   Set model.type to the real backend and provide credentials.
+
+# ---- Baseline settings ----
+baseline: best_route_adapted
+
+# Routing score threshold (see BESTRouteAdaptedBaseline.DEFAULT_THRESHOLD).
+# Queries whose (difficulty_proxy + 1 - confidence_proxy) >= threshold are
+# routed to direct_plus_revise; others stay with reasoning_greedy.
+# Tune on a held-out validation split; default 0.5 is conservative.
+threshold: 0.5
+
+# ---- Model settings ----
+model:
+  # Replace with "real" for paper-grade evaluation (requires API key).
+  type: dummy
+  correct_prob: 0.6
+  seed: 42
+
+# ---- Evaluation settings ----
+max_samples: 100      # Maximum queries per dataset (100 for manuscript regimes)
+cache_dir: data
+out_dir: outputs/baselines
+
+# Bundled data files for offline/smoke-test runs (no HuggingFace download)
+gsm8k_data_file: src/datasets/bundled/gsm8k_test_sample.json
+math500_data_file: src/datasets/bundled/math500_tiny.json
+
+# ---- Dataset selection ----
+datasets:
+  - gsm8k
+  - hard_gsm8k
+  - math500
+
+# ---- Flags ----
+evaluate:
+  compute_ladder: false
+  output_router: false
+  best_route_adapted: true
+  confidence_threshold: false
