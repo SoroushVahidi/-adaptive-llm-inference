@@ -1,0 +1,13 @@
+regime,comparison,mean_diff,ci_lower_95,ci_upper_95,p_value_two_sided,n,method
+math500_100,v5 minus reasoning_greedy,0.0200,-0.0400,0.0800,0.5836,100,paired-bootstrap
+math500_100,direct_plus_revise minus v5,-0.0200,-0.0600,0.0200,0.1816,100,paired-bootstrap
+math500_100,oracle minus v5,0.0400,0.0100,0.0800,0.0332,100,paired-bootstrap
+hard_gsm8k_100,v5 minus reasoning_greedy,0.0700,0.0000,0.1500,0.0804,100,paired-bootstrap
+hard_gsm8k_100,direct_plus_revise minus v5,0.0000,-0.0300,0.0300,0.6866,100,paired-bootstrap
+hard_gsm8k_100,oracle minus v5,0.0500,0.0100,0.1000,0.0120,100,paired-bootstrap
+hard_gsm8k_b2,v5 minus reasoning_greedy,0.0800,0.0300,0.1400,0.0002,100,paired-bootstrap
+hard_gsm8k_b2,direct_plus_revise minus v5,0.0000,-0.0300,0.0300,0.6912,100,paired-bootstrap
+hard_gsm8k_b2,oracle minus v5,0.0100,0.0000,0.0300,0.7342,100,paired-bootstrap
+gsm8k_random_100,v5 minus reasoning_greedy,0.0200,0.0000,0.0500,0.2614,100,paired-bootstrap
+gsm8k_random_100,direct_plus_revise minus v5,0.0000,0.0000,0.0000,0.0000,100,paired-bootstrap
+gsm8k_random_100,oracle minus v5,0.0000,0.0000,0.0000,0.0000,100,paired-bootstrap
