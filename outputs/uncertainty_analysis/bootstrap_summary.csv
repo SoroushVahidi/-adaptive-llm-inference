@@ -1,0 +1,13 @@
+regime,regime_label,comparison,n,acc_minuend,acc_subtrahend,observed_diff,ci_lower_95,ci_upper_95,ci_excludes_zero,n_bootstrap
+gsm8k_random_100,GSM8K Random-100,adaptive_v5 minus always_cheap,100,0.92,0.9,0.02,0.0,0.05,False,10000
+gsm8k_random_100,GSM8K Random-100,adaptive_v5 minus always_revise,100,0.92,0.92,0.0,0.0,0.0,False,10000
+gsm8k_random_100,GSM8K Random-100,oracle minus adaptive_v5,100,0.92,0.92,0.0,0.0,0.0,False,10000
+hard_gsm8k_100,Hard GSM8K-100,adaptive_v5 minus always_cheap,100,0.86,0.79,0.07,0.0,0.15,False,10000
+hard_gsm8k_100,Hard GSM8K-100,adaptive_v5 minus always_revise,100,0.86,0.86,0.0,-0.03,0.03,False,10000
+hard_gsm8k_100,Hard GSM8K-100,oracle minus adaptive_v5,100,0.91,0.86,0.05,0.01,0.1,True,10000
+hard_gsm8k_b2,Hard GSM8K-B2,adaptive_v5 minus always_cheap,100,0.91,0.83,0.08,0.03,0.14,True,10000
+hard_gsm8k_b2,Hard GSM8K-B2,adaptive_v5 minus always_revise,100,0.91,0.91,0.0,-0.03,0.03,False,10000
+hard_gsm8k_b2,Hard GSM8K-B2,oracle minus adaptive_v5,100,0.92,0.91,0.01,0.0,0.03,False,10000
+math500_100,MATH500-100,adaptive_v5 minus always_cheap,100,0.66,0.64,0.02,-0.04,0.08,False,10000
+math500_100,MATH500-100,adaptive_v5 minus always_revise,100,0.66,0.64,0.02,-0.02,0.06,False,10000
+math500_100,MATH500-100,oracle minus adaptive_v5,100,0.7,0.66,0.04,0.01,0.08,True,10000
