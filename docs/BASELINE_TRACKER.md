@@ -25,7 +25,7 @@ Status of every baseline we plan to compare against.
 | 4 | Self-consistency | Wang et al. "Self-Consistency Improves Chain of Thought Reasoning in LLMs" | ICLR 2023 | — | — | Native impl | ✅ | `src/baselines/self_consistency.py` |
 | 5 | Snell et al. | "Scaling LLM Test-Time Compute Optimally…" | arXiv 2024 | Unknown | Unknown | TBD — check for code release | 📋 | Key adaptive-compute baseline; search for official repo |
 | 6 | TALE | "Token-Budget-Aware LLM Reasoning" | arXiv 2024 | [GitHub](https://github.com/ChenWu98/TALE) | **Yes** | Adapt official code | 📋 | Wrapper stub at `external/tale/`; official repo confirmed public |
-| 7 | BEST-Route | "Adaptive LLM Routing with Test-Time Optimal Compute" | arXiv 2024 | [GitHub](https://github.com/best-route/best-route) | **Yes** | Adapt official code | 📋 | Wrapper stub at `external/best_route/`; official repo confirmed public |
+| 7 | BEST-Route | "BEST-Route: Adaptive LLM Routing with Test-Time Optimal Compute" | ICML 2025 | [GitHub](https://github.com/microsoft/best-route-llm) | **Yes** | Compatibility adaptation (see docs) | 🔧 | Adapted baseline `BESTRouteAdaptedBaseline` complete; official multi-model pipeline blocked — see `docs/BEST_ROUTE_INTEGRATION.md` |
 | 8 | Rewarding Progress / PRM Scaling | "Scaling Automated Process Verifiers for LLM Reasoning" | arXiv 2024 | Unknown | Unknown | TBD — check for code release | 📋 | Verification-guided baseline |
 | 9 | Training-Free Difficulty Proxies | "Adaptive Test-Time Compute Allocation via Training-Free Difficulty Proxies" | arXiv 2024 | Unknown | Unknown | TBD — check for code release | 📋 | Proxy-based adaptive allocation |
 | 10 | SelfBudgeter | "SelfBudgeter" | arXiv 2024 | Unknown | Unknown | TBD — check for code release | 📋 | Self-allocated token budgets |
@@ -35,7 +35,7 @@ Status of every baseline we plan to compare against.
 ## Notes on Official Code
 
 - **TALE:** Official repo is public. Integration via `external/tale/` + wrapper in `src/baselines/external/tale_wrapper.py`.
-- **BEST-Route:** Official repo is public. Integration via `external/best_route/` + wrapper in `src/baselines/external/best_route_wrapper.py`.
+- **BEST-Route:** Official repo is public (`https://github.com/microsoft/best-route-llm`; ICML 2025). `BESTRouteAdaptedBaseline` in `src/baselines/external/best_route_wrapper.py` is a runnable compatibility adaptation. Full official pipeline integration is blocked by multi-model/reward-model dependencies — see `docs/BEST_ROUTE_INTEGRATION.md`.
 - **Snell et al.:** No official code link found yet. Re-check periodically.
 - **Rewarding Progress:** No official code link found yet. May require reimplementation of process reward model evaluation.
 

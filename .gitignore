@@ -121,6 +121,8 @@ outputs/*
 !outputs/paper_tables_final/**
 !outputs/paper_figures_final/
 !outputs/paper_figures_final/**
+!outputs/uncertainty_analysis/
+!outputs/uncertainty_analysis/**
 
 ### Legacy results folder ###
 results/
