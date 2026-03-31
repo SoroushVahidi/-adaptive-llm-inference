@@ -1,0 +1,13 @@
+regime,policy,accuracy,average_cost,accuracy_gain_vs_rg,extra_cost_vs_rg,gain_per_extra_cost_unit,frac_dpr_accuracy_recovered,frac_dpr_cost_avoided
+math500_100,adaptive_policy_v5,0.6600,1.7100,0.0200,0.7100,0.0282,N/A,0.2900
+math500_100,adaptive_policy_v6,0.6500,1.0300,0.0100,0.0300,0.3333,N/A,0.9700
+math500_100,adaptive_policy_v7,0.6500,1.0900,0.0100,0.0900,0.1111,N/A,0.9100
+hard_gsm8k_100,adaptive_policy_v5,0.8600,1.5300,0.0700,0.5300,0.1321,1.0000,0.4700
+hard_gsm8k_100,adaptive_policy_v6,0.8100,1.2600,0.0200,0.2600,0.0769,0.2857,0.7400
+hard_gsm8k_100,adaptive_policy_v7,0.8200,1.4600,0.0300,0.4600,0.0652,0.4286,0.5400
+hard_gsm8k_b2,adaptive_policy_v5,0.9100,1.4100,0.0800,0.4100,0.1951,1.0000,0.5900
+hard_gsm8k_b2,adaptive_policy_v6,0.8900,1.2700,0.0600,0.2700,0.2222,0.7500,0.7300
+hard_gsm8k_b2,adaptive_policy_v7,0.8900,1.4000,0.0600,0.4000,0.1500,0.7500,0.6000
+gsm8k_random_100,adaptive_policy_v5,0.9200,1.2900,0.0200,0.2900,0.0690,1.0000,0.7100
+gsm8k_random_100,adaptive_policy_v6,0.9200,1.1800,0.0200,0.1800,0.1111,1.0000,0.8200
+gsm8k_random_100,adaptive_policy_v7,0.9200,1.3000,0.0200,0.3000,0.0667,1.0000,0.7000
