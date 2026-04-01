@@ -1,0 +1,55 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "num_rows": 100,
+  "revise_helpful_prevalence": 0.09,
+  "v7_accuracy": 0.89,
+  "v6_accuracy": 0.89,
+  "v7_minus_v6_accuracy": 0.0,
+  "confidence_router_accuracy": 0.89,
+  "confidence_router_threshold": 0.4,
+  "comparison": [
+    {
+      "route": "reasoning_greedy",
+      "accuracy": 0.83,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0
+    },
+    {
+      "route": "direct_plus_revise",
+      "accuracy": 0.91,
+      "avg_cost": 2.0,
+      "revise_rate": 1.0
+    },
+    {
+      "route": "adaptive_policy_v5",
+      "accuracy": 0.91,
+      "avg_cost": 1.41,
+      "revise_rate": 0.41
+    },
+    {
+      "route": "adaptive_policy_v6",
+      "accuracy": 0.89,
+      "avg_cost": 1.27,
+      "revise_rate": 0.27
+    },
+    {
+      "route": "adaptive_policy_v7",
+      "accuracy": 0.89,
+      "avg_cost": 1.4,
+      "revise_rate": 0.4
+    },
+    {
+      "route": "confidence_threshold",
+      "accuracy": 0.89,
+      "avg_cost": 1.09,
+      "revise_rate": 0.09
+    },
+    {
+      "route": "oracle",
+      "accuracy": 0.92,
+      "avg_cost": 1.09,
+      "revise_rate": 0.09
+    }
+  ]
+}
