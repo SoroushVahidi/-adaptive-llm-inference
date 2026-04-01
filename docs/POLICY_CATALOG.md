@@ -188,6 +188,25 @@ cannot be reconstructed without re-running experiments or accessing missing file
 
 ---
 
+## 11. Token-Budget Router (Length-Based, Compute-Only)
+
+| Field | Value |
+|---|---|
+| Policy name | Token-Budget Router |
+| Internal key | `token_budget_router` |
+| Policy type | Threshold baseline (compute-only) |
+| Decision rule | Escalate from RG to DPR when a cheap-route **length feature** is outside `[min_len_threshold, max_len_threshold]`; otherwise keep RG. No semantic error/constraint signals are used. |
+| Feature modes | `raw` (cheap output length), `ratio_question_tokens` (cheap output length / input length), `zscore` (normalized cheap output length) |
+| Input artifacts | `data/real_*_routing_dataset_enriched.csv` with cheap-route length fields |
+| Tuning command | `python -m routing.token_budget_router.tune --config config/token_budget_router_default.yaml` |
+| Evaluation command | `python -m routing.token_budget_router.eval --config config/token_budget_router_default.yaml` |
+| Output files | `outputs/token_budget_router/*/policy_comparison.csv`, `outputs/token_budget_router/budget_curves/*_token_budget_curve.csv`, `outputs/token_budget_router/token_budget_router_summary.json` |
+| Regimes evaluated | gsm8k_random_100, hard_gsm8k_100, hard_gsm8k_b2, math500_100 |
+
+**Source:** `src/policies/token_budget_router.py`, `routing/token_budget_router/tune.py`, `routing/token_budget_router/eval.py`, `config/token_budget_router_default.yaml`.
+
+---
+
 ## Summary Table
 
 | Policy | Type | All 4 regimes? | Per-query data? | Oracle comparison? |
@@ -202,3 +221,4 @@ cannot be reconstructed without re-running experiments or accessing missing file
 | Learned Router (LR) | Learned | ✅ | ❌ (summary only) | ❌ |
 | Learned Router (DT) | Learned | ✅ | ❌ (summary only) | ❌ |
 | Reasoning-Then-Revise | Fixed sequential | ✅ (summaries) | ❌ | ❌ |
+| Token-Budget Router | Threshold (compute-only) | ✅ | ✅ | ✅ |
