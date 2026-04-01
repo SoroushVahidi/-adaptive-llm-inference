@@ -73,7 +73,7 @@ python3 scripts/run_oracle_strategy_eval.py \
 ```bash
 python3 scripts/run_real_budget_sweep.py \
     --config configs/real_budget_sweep_gsm8k.yaml
-# writes: outputs/real_budget_sweep/
+# writes: outputs/budget_sweep/
 ```
 
 ### A7. Cross-regime summary (uses committed enriched CSVs)
@@ -165,12 +165,19 @@ python3 scripts/run_real_routing_model_eval.py
 # Hard-GSM8K → outputs/real_hard_gsm8k_routing_model/
 ```
 
-### B7. Export paper tables
+### B7. Export paper tables and final canonical assets
 
 ```bash
-python3 scripts/run_paper_table_export.py   # if available
-# or run individual export scripts under scripts/
+# Regenerate intermediate tables and figures:
+python3 scripts/generate_paper_tables.py
 # writes: outputs/paper_tables/
+
+python3 scripts/generate_paper_figures.py
+# writes: outputs/paper_figures/
+
+# Regenerate the final canonical manuscript assets (tables_final/ + figures_final/):
+python3 scripts/generate_final_manuscript_artifacts.py
+# writes: outputs/paper_tables_final/, outputs/paper_figures_final/
 ```
 
 ---
@@ -180,13 +187,15 @@ python3 scripts/run_paper_table_export.py   # if available
 | Artifact | Committed? | Command to regenerate |
 |----------|------------|-----------------------|
 | `data/real_*_routing_dataset*.csv` | ✅ Yes | B1–B4 above |
+| `outputs/paper_tables_final/` | ✅ Yes | B7 (`generate_final_manuscript_artifacts.py`) |
+| `outputs/paper_figures_final/` | ✅ Yes | B7 (`generate_final_manuscript_artifacts.py`) |
 | `outputs/paper_tables/cross_regime/final_cross_regime_summary.csv` | ✅ Yes | A7 above |
 | `outputs/paper_tables/baselines/` | ✅ Yes | see `scripts/run_strong_baselines.py` |
 | `outputs/paper_tables/oracle_routing/` | ✅ Yes | A5 above |
 | `outputs/paper_tables/next_stage/` | ✅ Yes | see `scripts/run_next_stage_postprocess.py` |
 | `outputs/budget_sweep/` | ✅ Yes | A6 above |
 | `outputs/baselines/` | ✅ Yes | see `scripts/run_strong_baselines.py` |
-| Simulated-sweep tables | ❌ BLOCKED | A8 above |
+| Simulated-sweep tables | ❌ BLOCKED | A9 above |
 | Oracle-subset table | ❌ BLOCKED | A5 above |
 
 See `outputs/paper_tables/export_manifest.json` for the full blocker list.
