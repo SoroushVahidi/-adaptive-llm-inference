@@ -37,12 +37,13 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 
 #: Maps manuscript regime id → enriched routing dataset CSV path.
+#: Covers only the four main manuscript regimes (GSM8K random-100,
+#: Hard GSM8K 100, Hard GSM8K B2, MATH500 100).
 REGIME_FILES: dict[str, str] = {
     "gsm8k_random_100": "data/real_gsm8k_routing_dataset_enriched.csv",
     "hard_gsm8k_100": "data/real_hard_gsm8k_routing_dataset_enriched.csv",
     "hard_gsm8k_b2": "data/real_hard_gsm8k_b2_routing_dataset_enriched.csv",
     "math500_100": "data/real_math500_routing_dataset_enriched.csv",
-    "gpqa_diamond_198": "data/real_gpqa_diamond_routing_dataset_enriched.csv",
 }
 
 #: Column used as the routing confidence signal.
