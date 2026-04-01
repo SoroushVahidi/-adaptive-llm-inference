@@ -2,7 +2,7 @@
 
 Authoritative deterministic table set generated from committed artifacts only.
 
-- `main_results_summary.csv` — Main-paper core regime summary (includes v5-v7, cheap, DPR, oracle).
+- `main_results_summary.csv` — Main-paper core regime summary (includes v5-v7, token-budget router, cheap, DPR, oracle).
 - `cross_regime_summary.csv` — Canonical cross-regime comparison with normalized regime names.
 - `policy_comparison_main.csv` — Main comparison rows used for plots and manuscript table text.
 - `oracle_headroom_main.csv` — Oracle gap/headroom summary (main paper).
@@ -13,3 +13,7 @@ Authoritative deterministic table set generated from committed artifacts only.
 
 Main paper: first six files + statistical support as needed.
 Appendix/supplementary: `baseline_comparison_appendix.csv`.
+
+Token-budget router inputs are produced by:
+- `python -m routing.token_budget_router.tune --config config/token_budget_router_default.yaml`
+- `python -m routing.token_budget_router.eval --config config/token_budget_router_default.yaml`

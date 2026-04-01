@@ -1,0 +1,70 @@
+# configs/learned_router_default.yaml
+#
+# Default configuration for the learned router baseline.
+#
+# This is a FrugalGPT / RouteLLM-style learned router trained to predict
+# whether the expensive DPR action is strictly better than the cheap RG action
+# (y=1 if revise_correct=1 AND reasoning_correct=0, else y=0).
+#
+# Run training:
+#   python -m src.routing.learned_router.train \
+#       --config configs/learned_router_default.yaml
+#
+# Run evaluation on all manuscript regimes:
+#   python -m src.routing.learned_router.eval \
+#       --config configs/learned_router_default.yaml
+
+# ---- Model type ----
+# Options: "logistic_regression", "mlp"
+# Start with logistic_regression (fast, interpretable, no PyTorch required).
+model_type: logistic_regression
+
+# ---- Experiment setup ----
+# Which regime to hold out as the test set (leave-one-out training).
+# Set to null to pool all regimes for training (no held-out test set).
+# Valid values: gsm8k_random_100, hard_gsm8k_100, hard_gsm8k_b2, math500_100
+test_regime: null
+
+# Fraction of the pooled (non-test) data to use as validation set.
+val_fraction: 0.2
+
+# Random seed for reproducible splits and model training.
+random_seed: 42
+
+# ---- Output directory ----
+output_dir: outputs/learned_router
+
+# ---- Logistic regression hyperparameters ----
+logreg:
+  C: 1.0        # Inverse regularisation strength (higher = less regularisation)
+  max_iter: 1000
+
+# ---- MLP hyperparameters (used when model_type: mlp) ----
+mlp:
+  hidden_sizes: [64, 32]  # Layer widths of the hidden layers
+  lr: 0.001               # Adam learning rate
+  weight_decay: 0.0001    # L2 regularisation
+  epochs: 50
+  batch_size: 32
+  # Cost-aware loss: extra penalty for false positives (unnecessary escalations).
+  # Set to 0.0 for standard BCE; > 0 to penalise over-escalation.
+  cost_weight: 0.0
+  dropout: 0.1
+
+# ---- Threshold sweep (validation operating point selection) ----
+threshold_sweep:
+  start: 0.05
+  stop: 0.95
+  step: 0.05
+
+# ---- Cost model ----
+cheap_cost: 1.0      # Cost of the RG (reasoning_greedy) action
+expensive_cost: 2.0  # Cost of the DPR (direct_plus_revise) action
+
+# ---- Feature configuration ----
+# Set to null to use all FEATURE_COLS defined in src/routing/learned_router/features.py.
+# Or provide an explicit list to ablate specific feature groups, e.g.:
+#   feature_cols:
+#     - unified_confidence_score
+#     - unified_error_score
+feature_cols: null

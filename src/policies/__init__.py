@@ -7,6 +7,10 @@ from src.policies.adaptive_policy_v4 import AdaptivePolicyV4Config
 from src.policies.adaptive_policy_v5 import AdaptivePolicyV5Config
 from src.policies.adaptive_policy_v6 import AdaptivePolicyV6Config
 from src.policies.adaptive_policy_v7 import AdaptivePolicyV7Config
+from src.policies.learned_router_policy import (
+    LearnedRouterPolicy,
+    LearnedRouterPolicyConfig,
+)
 from src.policies.token_budget_router import TokenBudgetRouterConfig
 
 __all__ = [
@@ -17,6 +21,9 @@ __all__ = [
     "AdaptivePolicyV5Config",
     "AdaptivePolicyV6Config",
     "AdaptivePolicyV7Config",
+    "LearnedRouterPolicy",
+    "LearnedRouterPolicyConfig",
     "TokenBudgetRouterConfig",
 ]
+
 
