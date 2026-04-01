@@ -34,6 +34,30 @@ all datasets used in the manuscript.
 - **Reference:** Rein et al., "GPQA: A Graduate-Level Google-Proof Q&A Benchmark," 2023.
 - **Access:** Committed file; full dataset available at [https://github.com/idavidrein/gpqa](https://github.com/idavidrein/gpqa).
 
+### MMLU-Pro
+
+- **Source:** HuggingFace — `TIGER-Lab/MMLU-Pro`
+- **License:** Not specified in HuggingFace metadata at build time; check upstream dataset card.
+- **Access:** Committed normalized file `data/mmlu_pro_normalized.jsonl` and smoke sample `data/mmlu_pro_sample.jsonl`.
+
+### MuSR
+
+- **Source:** HuggingFace — `TAUR-Lab/MuSR`
+- **License:** Not specified in HuggingFace metadata at build time; check upstream dataset card.
+- **Access:** Committed normalized file `data/musr_normalized.jsonl` and smoke sample `data/musr_sample.jsonl`.
+
+### StrategyQA
+
+- **Source:** HuggingFace — `ChilleD/StrategyQA`
+- **License:** Not specified in HuggingFace metadata at build time; check upstream dataset card.
+- **Access:** Committed normalized file `data/strategyqa_normalized.jsonl` and smoke sample `data/strategyqa_sample.jsonl`.
+
+### BIG-Bench Hard (BBH)
+
+- **Source:** HuggingFace — `lukaemon/bbh`
+- **License:** Not specified in HuggingFace metadata at build time; check upstream dataset card.
+- **Access:** Committed normalized file `data/bbh_normalized.jsonl` and smoke sample `data/bbh_sample.jsonl`.
+
 ---
 
 ## 2. Derived Routing Datasets
@@ -84,6 +108,15 @@ python3 scripts/run_select_hard_gsm8k.py --subset-size 100
 python3 scripts/run_build_hard_gsm8k_routing_dataset.py
 ```
 
+To regenerate the four newly added public normalized datasets (no secrets required):
+
+```bash
+python3 scripts/build_mmlu_pro_dataset.py
+python3 scripts/build_musr_dataset.py
+python3 scripts/build_strategyqa_dataset.py
+python3 scripts/build_bbh_dataset.py
+```
+
 ---
 
 ## 3. Additional Committed Data Files
@@ -94,6 +127,10 @@ python3 scripts/run_build_hard_gsm8k_routing_dataset.py
 | `src/datasets/bundled/gsm8k_test_sample.json` | 50-question GSM8K bundled sample (offline testing) |
 | `src/datasets/bundled/math500_tiny.json` | Tiny MATH500 subset (offline testing) |
 | `src/datasets/bundled/real_v6_false_negative_probe_snapshot.jsonl` | Probe fixture for policy v6 evaluation |
+| `data/mmlu_pro_sample.jsonl` | 64-row smoke sample for offline tests |
+| `data/musr_sample.jsonl` | 64-row smoke sample for offline tests |
+| `data/strategyqa_sample.jsonl` | 64-row smoke sample for offline tests |
+| `data/bbh_sample.jsonl` | 64-row smoke sample for offline tests |
 
 ---
 

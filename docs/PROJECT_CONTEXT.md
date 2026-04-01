@@ -139,6 +139,15 @@ See `docs/BASELINE_TRACKER.md` for official code availability and reproduction s
 ### Stage 3 (possible)
 - Broader reasoning benchmark (e.g., BBH, ARC, or similar)
 
+### Current supplementary public reasoning assets
+- MMLU-Pro (`data/mmlu_pro_normalized.jsonl`)
+- MuSR (`data/musr_normalized.jsonl`)
+- StrategyQA (`data/strategyqa_normalized.jsonl`)
+- BBH (`data/bbh_normalized.jsonl`)
+
+These are committed in normalized JSONL form with matching smoke-test samples,
+and local-first loaders under `src/datasets/`.
+
 ## 7. Implementation Plan
 
 ### Current state (v0.1)

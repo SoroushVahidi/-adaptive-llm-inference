@@ -54,7 +54,7 @@ Most analysis steps run **offline without any API key**.
 
 ```
 ├── src/
-│   ├── datasets/          # Dataset loaders (GSM8K, MATH500, AIME-2024, GPQA)
+│   ├── datasets/          # Dataset loaders (GSM8K, MATH500, AIME-2024, GPQA, MMLU-Pro, MuSR, StrategyQA, BBH)
 │   ├── models/            # Model interface: dummy (offline) + OpenAI-backed
 │   ├── baselines/         # Greedy, best-of-N, self-consistency; TALE/BEST-Route wrappers
 │   │   └── external/      # Thin wrappers for official-code baselines
@@ -170,6 +170,10 @@ reproduce the main manuscript results.
 | MATH500 | HuggingFace `lighteval/MATH-Hard` | Auto-downloaded on first run |
 | AIME-2024 | Subset in `data/` | Committed (30 problems) |
 | GPQA-Diamond | Normalised file in `data/` | Committed (`data/gpqa_diamond_normalized.jsonl`); enriched routing CSV via `docs/GPQA_EVALUATION_STATUS.md` |
+| MMLU-Pro | HuggingFace `TIGER-Lab/MMLU-Pro` | Committed normalized + sample files (`data/mmlu_pro_*`) |
+| MuSR | HuggingFace `TAUR-Lab/MuSR` | Committed normalized + sample files (`data/musr_*`) |
+| StrategyQA | HuggingFace `ChilleD/StrategyQA` | Committed normalized + sample files (`data/strategyqa_*`) |
+| BIG-Bench Hard (BBH) | HuggingFace `lukaemon/bbh` | Committed normalized + sample files (`data/bbh_*`) |
 
 ### Committed routing datasets
 

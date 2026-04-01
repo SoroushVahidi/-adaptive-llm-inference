@@ -105,6 +105,14 @@ python3 scripts/summarize_simulated_results.py
 # writes: outputs/simulated_sweep/
 ```
 
+### A10. New public-dataset smoke test (fully offline)
+
+```bash
+python3 scripts/run_new_dataset_smoke.py
+# reads committed local sample/normalized files for:
+# MMLU-Pro, MuSR, StrategyQA, BBH
+```
+
 ---
 
 ## Part B — Real-Model Experiments (Requires OPENAI_API_KEY)
@@ -178,6 +186,16 @@ python3 scripts/generate_paper_figures.py
 # Regenerate the final canonical manuscript assets (tables_final/ + figures_final/):
 python3 scripts/generate_final_manuscript_artifacts.py
 # writes: outputs/paper_tables_final/, outputs/paper_figures_final/
+```
+
+### B8. Rebuild normalized public reasoning datasets (internet required, no API keys)
+
+```bash
+python3 scripts/build_mmlu_pro_dataset.py
+python3 scripts/build_musr_dataset.py
+python3 scripts/build_strategyqa_dataset.py
+python3 scripts/build_bbh_dataset.py
+# writes normalized JSONL + 64-row sample JSONL under data/
 ```
 
 ---

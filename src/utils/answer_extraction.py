@@ -137,15 +137,15 @@ def _extract_from_final_lines(text: str) -> str:
 
 
 _MC_FINAL_RE = re.compile(
-    r"(?:final answer|answer)\s*:\s*\(?\s*([ABCDabcd])\s*\)?",
+    r"(?:final answer|answer)\s*:\s*\(?\s*([A-Ja-j])\s*\)?",
     re.IGNORECASE,
 )
-_MC_PAREN_RE = re.compile(r"\(\s*([ABCDabcd])\s*\)")
-_MC_STANDALONE_LETTER_RE = re.compile(r"(?<![A-Za-z])([ABCDabcd])(?![A-Za-z])")
+_MC_PAREN_RE = re.compile(r"\(\s*([A-Ja-j])\s*\)")
+_MC_STANDALONE_LETTER_RE = re.compile(r"(?<![A-Za-z])([A-Ja-j])(?![A-Za-z])")
 
 
 def extract_mc_answer(text: str) -> str:
-    """Extract a multiple-choice letter (A–D) from model output.
+    """Extract a multiple-choice letter (A–J) from model output.
 
     Prefer explicit ``Final answer: (B)`` / ``Answer: C`` patterns, then the last
     parenthesized letter, then a standalone letter token in the final lines.
@@ -172,6 +172,56 @@ def extract_mc_answer(text: str) -> str:
         return letters[-1].upper()
 
     return ""
+
+
+_BOOL_TRUE = {"true", "yes", "y", "1"}
+_BOOL_FALSE = {"false", "no", "n", "0"}
+_BOOL_TOKEN_RE = re.compile(r"\b(true|false|yes|no|y|n|0|1)\b", re.IGNORECASE)
+
+
+def normalize_boolean_answer(text: str) -> str:
+    """Normalize boolean answer text to ``"true"`` / ``"false"`` / ``""``."""
+    s = text.strip().lower()
+    if s in _BOOL_TRUE:
+        return "true"
+    if s in _BOOL_FALSE:
+        return "false"
+    # Try to find a boolean token inside longer text.
+    matches = _BOOL_TOKEN_RE.findall(s)
+    if matches:
+        token = matches[-1].lower()
+        if token in _BOOL_TRUE:
+            return "true"
+        if token in _BOOL_FALSE:
+            return "false"
+    return ""
+
+
+def extract_boolean_answer(text: str) -> str:
+    """Extract boolean answer from free-form output."""
+    if not text.strip():
+        return ""
+    # Prefer final-answer cue line.
+    last_match = None
+    for match in FINAL_ANSWER_CUE_RE.finditer(text):
+        last_match = match
+    if last_match is not None:
+        trailing = text[last_match.end() :].strip()
+        line = trailing.splitlines()[0] if trailing else ""
+        ans = normalize_boolean_answer(line)
+        if ans:
+            return ans
+    # Fallback: normalize over full text.
+    return normalize_boolean_answer(text)
+
+
+def normalize_text_answer(text: str) -> str:
+    """Conservative text normalization for task answers (e.g., BBH targets)."""
+    s = text.strip().lower()
+    s = re.sub(r"\s+", " ", s)
+    # Remove trailing punctuation noise but keep inner punctuation.
+    s = s.strip(" \t\n\r.,;:!?")
+    return s
 
 
 def extract_numeric_answer(text: str) -> str:

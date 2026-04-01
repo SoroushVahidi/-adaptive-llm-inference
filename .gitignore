@@ -46,6 +46,14 @@ data/*
 !data/real_gsm8k_routing_dataset_enriched.csv
 !data/real_aime2024_routing_dataset.csv
 !data/gpqa_diamond_normalized.jsonl
+!data/mmlu_pro_normalized.jsonl
+!data/musr_normalized.jsonl
+!data/strategyqa_normalized.jsonl
+!data/bbh_normalized.jsonl
+!data/mmlu_pro_sample.jsonl
+!data/musr_sample.jsonl
+!data/strategyqa_sample.jsonl
+!data/bbh_sample.jsonl
 !data/real_hard_gsm8k_b2_routing_dataset.csv
 !data/real_hard_gsm8k_b2_routing_dataset_enriched.csv
 !data/real_gpqa_diamond_routing_dataset_enriched.csv
