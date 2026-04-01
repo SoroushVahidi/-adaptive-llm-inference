@@ -85,7 +85,19 @@ python3 scripts/run_final_cross_regime_summary.py
 #         outputs/paper_tables/cross_regime/final_cross_regime_summary.csv
 ```
 
-### A8. Simulated allocation sweep (synthetic, fully offline)
+### A8. Token-budget router baseline (compute-only, length-based)
+
+Tune thresholds on a held-out validation artifact set and evaluate on the four
+main manuscript regimes:
+
+```bash
+python -m routing.token_budget_router.tune --config config/token_budget_router_default.yaml
+python -m routing.token_budget_router.eval --config config/token_budget_router_default.yaml
+# writes: outputs/token_budget_router/
+#         (per-regime policy_comparison.csv + budget_curves + global summary)
+```
+
+### A9. Simulated allocation sweep (synthetic, fully offline)
 
 ```bash
 python3 scripts/run_simulated_sweep.py --config configs/simulated_sweep.yaml

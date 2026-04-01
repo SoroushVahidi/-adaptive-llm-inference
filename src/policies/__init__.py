@@ -6,6 +6,7 @@ from src.policies.adaptive_policy_v3 import AdaptivePolicyV3Config
 from src.policies.adaptive_policy_v4 import AdaptivePolicyV4Config
 from src.policies.adaptive_policy_v6 import AdaptivePolicyV6Config
 from src.policies.adaptive_policy_v7 import AdaptivePolicyV7Config
+from src.policies.token_budget_router import TokenBudgetRouterConfig
 
 __all__ = [
     "AdaptivePolicyV1Config",
@@ -14,5 +15,6 @@ __all__ = [
     "AdaptivePolicyV4Config",
     "AdaptivePolicyV6Config",
     "AdaptivePolicyV7Config",
+    "TokenBudgetRouterConfig",
 ]
 

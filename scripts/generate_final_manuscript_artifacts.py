@@ -60,10 +60,26 @@ BUDGET_PATHS = {
     "math500_100": "outputs/budget_sweep/math500_100_budget_curve.csv",
 }
 
+TOKEN_BUDGET_POLICY_PATHS = {
+    "gsm8k_random_100": "outputs/token_budget_router/gsm8k_random_100/policy_comparison.csv",
+    "hard_gsm8k_100": "outputs/token_budget_router/hard_gsm8k_100/policy_comparison.csv",
+    "hard_gsm8k_b2": "outputs/token_budget_router/hard_gsm8k_b2/policy_comparison.csv",
+    "math500_100": "outputs/token_budget_router/math500_100/policy_comparison.csv",
+}
+
+TOKEN_BUDGET_CURVE_PATHS = {
+    "gsm8k_random_100": "outputs/token_budget_router/budget_curves/gsm8k_random_100_token_budget_curve.csv",
+    "hard_gsm8k_100": "outputs/token_budget_router/budget_curves/hard_gsm8k_100_token_budget_curve.csv",
+    "hard_gsm8k_b2": "outputs/token_budget_router/budget_curves/hard_gsm8k_b2_token_budget_curve.csv",
+    "math500_100": "outputs/token_budget_router/budget_curves/math500_100_token_budget_curve.csv",
+}
+
 REQUIRED_FILES = [
     *SUMMARY_PATHS.values(),
     *ORACLE_PATHS.values(),
     *BUDGET_PATHS.values(),
+    *TOKEN_BUDGET_POLICY_PATHS.values(),
+    *TOKEN_BUDGET_CURVE_PATHS.values(),
     "outputs/paper_tables/oracle_headroom_table.csv",
     "outputs/paper_tables/routing_outcome_breakdown.csv",
     "outputs/paper_tables/bootstrap_accuracy_ci.csv",
@@ -91,6 +107,12 @@ class RegimeMetrics:
     v6_cost: float
     v7_acc: float
     v7_cost: float
+    v7_revise_rate: float
+    token_budget_acc: float
+    token_budget_cost: float
+    token_budget_revise_rate: float
+    token_budget_min_threshold: float | None
+    token_budget_max_threshold: float | None
     oracle_acc: float
     oracle_cost: float
     conf_acc: float
@@ -138,6 +160,36 @@ def _comparison_map(summary: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {r["route"]: r for r in summary.get("comparison", []) if isinstance(r, dict)}
 
 
+def _token_operating_point_for_regime(root: Path, regime: str, target_revise_rate: float) -> dict[str, Any]:
+    rows = _read_csv(root / TOKEN_BUDGET_CURVE_PATHS[regime])
+    parsed: list[dict[str, Any]] = []
+    for r in rows:
+        parsed.append(
+            {
+                "accuracy": float(r["accuracy"]),
+                "avg_cost": float(r["avg_cost"]),
+                "revise_rate": float(r["revise_rate"]),
+                "min_len_threshold": None
+                if r.get("min_len_threshold") in ("", None)
+                else float(r["min_len_threshold"]),
+                "max_len_threshold": None
+                if r.get("max_len_threshold") in ("", None)
+                else float(r["max_len_threshold"]),
+            }
+        )
+    if not parsed:
+        raise ValueError(f"No token-budget curve rows found for regime={regime}")
+
+    return sorted(
+        parsed,
+        key=lambda r: (
+            abs(r["revise_rate"] - target_revise_rate),
+            -r["accuracy"],
+            r["avg_cost"],
+        ),
+    )[0]
+
+
 def _load_confidence(root: Path) -> dict[str, dict[str, Any]]:
     rows = _read_csv(root / "outputs/baselines/confidence_threshold/confidence_threshold_summary.csv")
     out: dict[str, dict[str, Any]] = {}
@@ -159,6 +211,8 @@ def load_regime_metrics(root: Path) -> list[RegimeMetrics]:
         summary = _read_json(root / SUMMARY_PATHS[regime])
         oracle = _read_json(root / ORACLE_PATHS[regime])
         comp = _comparison_map(summary)
+        v7_revise = float(comp["adaptive_policy_v7"]["revise_rate"])
+        token_op = _token_operating_point_for_regime(root, regime, target_revise_rate=v7_revise)
         c = conf[regime]
         metrics.append(
             RegimeMetrics(
@@ -175,6 +229,12 @@ def load_regime_metrics(root: Path) -> list[RegimeMetrics]:
                 v6_cost=float(comp["adaptive_policy_v6"]["avg_cost"]),
                 v7_acc=float(comp["adaptive_policy_v7"]["accuracy"]),
                 v7_cost=float(comp["adaptive_policy_v7"]["avg_cost"]),
+                v7_revise_rate=v7_revise,
+                token_budget_acc=float(token_op["accuracy"]),
+                token_budget_cost=float(token_op["avg_cost"]),
+                token_budget_revise_rate=float(token_op["revise_rate"]),
+                token_budget_min_threshold=token_op["min_len_threshold"],
+                token_budget_max_threshold=token_op["max_len_threshold"],
                 oracle_acc=float(oracle["accuracy"]),
                 oracle_cost=float(oracle["avg_cost"]),
                 conf_acc=float(c["accuracy"]),
@@ -216,6 +276,9 @@ def generate_tables(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) -> 
                 "adaptive_primary_policy": "adaptive_policy_v5",
                 "adaptive_primary_accuracy": round(m.v5_acc, 4),
                 "adaptive_primary_cost": round(m.v5_cost, 4),
+                "token_budget_accuracy": round(m.token_budget_acc, 4),
+                "token_budget_cost": round(m.token_budget_cost, 4),
+                "token_budget_revise_rate": round(m.token_budget_revise_rate, 4),
                 "adaptive_best_accuracy_policy": best_name,
                 "adaptive_best_accuracy": round(best_acc, 4),
                 "adaptive_best_accuracy_cost": round(best_cost, 4),
@@ -240,6 +303,9 @@ def generate_tables(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) -> 
                 "adaptive_v5_acc": round(m.v5_acc, 4),
                 "adaptive_v6_acc": round(m.v6_acc, 4),
                 "adaptive_v7_acc": round(m.v7_acc, 4),
+                "token_budget_acc": round(m.token_budget_acc, 4),
+                "token_budget_cost": round(m.token_budget_cost, 4),
+                "token_budget_revise_rate": round(m.token_budget_revise_rate, 4),
                 "best_adaptive_policy": best_name,
                 "best_adaptive_acc": round(best_acc, 4),
                 "best_adaptive_cost": round(best_cost, 4),
@@ -260,6 +326,12 @@ def generate_tables(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) -> 
             ("adaptive_policy_v5", m.v5_acc, m.v5_cost, m.v5_cost - 1.0),
             ("adaptive_policy_v6", m.v6_acc, m.v6_cost, m.v6_cost - 1.0),
             ("adaptive_policy_v7", m.v7_acc, m.v7_cost, m.v7_cost - 1.0),
+            (
+                "token_budget_router",
+                m.token_budget_acc,
+                m.token_budget_cost,
+                m.token_budget_cost - 1.0,
+            ),
             ("direct_plus_revise", m.dpr_acc, m.dpr_cost, m.dpr_cost - 1.0),
             ("oracle", m.oracle_acc, m.oracle_cost, m.oracle_cost - 1.0),
         ]
@@ -305,6 +377,7 @@ def generate_tables(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) -> 
             rows.append(
                 {
                     "regime": regime,
+                    "curve_source": "confidence_threshold",
                     "target_cost": t,
                     "target_budget_point": round(_budget_target(best), 4),
                     "selected_threshold": float(best["threshold"]) if "threshold" in best else "",
@@ -314,6 +387,23 @@ def generate_tables(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) -> 
                     "n": int(float(best["n"])) if "n" in best else 100,
                 }
             )
+        token_curve = _read_csv(root / TOKEN_BUDGET_CURVE_PATHS[regime])
+        token_best = _token_operating_point_for_regime(
+            root, regime, target_revise_rate=float(metrics[REGIME_ORDER.index(regime)].v7_revise_rate)
+        )
+        rows.append(
+            {
+                "regime": regime,
+                "curve_source": "token_budget_router",
+                "target_cost": "",
+                "target_budget_point": "",
+                "selected_threshold": "",
+                "achieved_cost": round(token_best["avg_cost"], 4),
+                "accuracy": round(token_best["accuracy"], 4),
+                "revise_rate": round(token_best["revise_rate"], 4),
+                "n": int(float(token_curve[0]["n"])) if token_curve and "n" in token_curve[0] else 100,
+            }
+        )
     p = out_dir / "budget_curve_main_points.csv"
     _write_csv(p, rows, list(rows[0].keys()))
     written.append(p)
@@ -395,7 +485,7 @@ def generate_tables(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) -> 
                 "",
                 "Authoritative deterministic table set generated from committed artifacts only.",
                 "",
-                "- `main_results_summary.csv` — Main-paper core regime summary (includes v5-v7, cheap, DPR, oracle).",
+                "- `main_results_summary.csv` — Main-paper core regime summary (includes v5-v7, token-budget router, cheap, DPR, oracle).",
                 "- `cross_regime_summary.csv` — Canonical cross-regime comparison with normalized regime names.",
                 "- `policy_comparison_main.csv` — Main comparison rows used for plots and manuscript table text.",
                 "- `oracle_headroom_main.csv` — Oracle gap/headroom summary (main paper).",
@@ -406,6 +496,10 @@ def generate_tables(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) -> 
                 "",
                 "Main paper: first six files + statistical support as needed.",
                 "Appendix/supplementary: `baseline_comparison_appendix.csv`.",
+                "",
+                "Token-budget router inputs are produced by:",
+                "- `python -m routing.token_budget_router.tune --config config/token_budget_router_default.yaml`",
+                "- `python -m routing.token_budget_router.eval --config config/token_budget_router_default.yaml`",
             ]
         )
         + "\n",
@@ -432,6 +526,7 @@ def generate_figures(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) ->
     x = range(len(metrics))
     ax1.plot(x, [m.rg_acc for m in metrics], marker="o", label="Cheap")
     ax1.plot(x, [m.v5_acc for m in metrics], marker="o", label="Adaptive v5")
+    ax1.plot(x, [m.token_budget_acc for m in metrics], marker="o", label="Token budget")
     ax1.plot(x, [m.dpr_acc for m in metrics], marker="o", label="Always revise")
     ax1.plot(x, [m.oracle_acc for m in metrics], marker="o", label="Oracle")
     ax1.set_xticks(list(x), labels, rotation=20, ha="right")
@@ -440,6 +535,7 @@ def generate_figures(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) ->
     ax1.legend(fontsize=8)
     ax2.plot(x, [m.rg_cost for m in metrics], marker="o", label="Cheap")
     ax2.plot(x, [m.v5_cost for m in metrics], marker="o", label="Adaptive v5")
+    ax2.plot(x, [m.token_budget_cost for m in metrics], marker="o", label="Token budget")
     ax2.plot(x, [m.dpr_cost for m in metrics], marker="o", label="Always revise")
     ax2.plot(x, [m.oracle_cost for m in metrics], marker="o", label="Oracle")
     ax2.set_xticks(list(x), labels, rotation=20, ha="right")
@@ -496,10 +592,12 @@ def generate_figures(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) ->
     fig, ax = plt.subplots(figsize=(7.2, 4.2))
     cheap_gap = [m.oracle_acc - m.rg_acc for m in metrics]
     adaptive_gap = [m.oracle_acc - m.v5_acc for m in metrics]
+    token_gap = [m.oracle_acc - m.token_budget_acc for m in metrics]
     x = list(range(len(metrics)))
-    w = 0.35
-    ax.bar([i - w / 2 for i in x], cheap_gap, width=w, label="Cheap -> Oracle gap")
-    ax.bar([i + w / 2 for i in x], adaptive_gap, width=w, label="Adaptive v5 -> Oracle gap")
+    w = 0.25
+    ax.bar([i - w for i in x], cheap_gap, width=w, label="Cheap -> Oracle gap")
+    ax.bar(x, adaptive_gap, width=w, label="Adaptive v5 -> Oracle gap")
+    ax.bar([i + w for i in x], token_gap, width=w, label="Token budget -> Oracle gap")
     ax.set_xticks(x, labels, rotation=20, ha="right")
     ax.set_ylabel("Accuracy gap")
     ax.set_title("Oracle Gap Reduction")
@@ -515,10 +613,34 @@ def generate_figures(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) ->
     for ax, regime in zip(axes.flatten(), regimes):
         rows = _read_csv(root / BUDGET_PATHS[regime])
         rows = sorted(rows, key=_budget_cost)
-        ax.plot([_budget_cost(r) for r in rows], [float(r["accuracy"]) for r in rows], marker="o", ms=3)
+        ax.plot(
+            [_budget_cost(r) for r in rows],
+            [float(r["accuracy"]) for r in rows],
+            marker="o",
+            ms=3,
+            label="confidence_threshold",
+        )
+        trows = _read_csv(root / TOKEN_BUDGET_CURVE_PATHS[regime])
+        trows = sorted(trows, key=lambda r: float(r["avg_cost"]))
+        ax.plot(
+            [float(r["avg_cost"]) for r in trows],
+            [float(r["accuracy"]) for r in trows],
+            marker="s",
+            ms=3,
+            label="token_budget_router",
+        )
+        m = metrics[regimes.index(regime)]
+        ax.scatter([m.rg_cost], [m.rg_acc], marker="x", s=28, label="always_RG")
+        ax.scatter([m.dpr_cost], [m.dpr_acc], marker="^", s=28, label="always_DPR")
+        ax.scatter([m.v5_cost], [m.v5_acc], marker="D", s=28, label="v5")
+        ax.scatter([m.v6_cost], [m.v6_acc], marker="D", s=28, label="v6")
+        ax.scatter([m.v7_cost], [m.v7_acc], marker="D", s=28, label="v7")
+        ax.scatter([m.oracle_cost], [m.oracle_acc], marker="*", s=40, label="oracle")
         ax.set_title(REGIME_LABEL[regime], fontsize=10)
         ax.set_xlabel("Achieved average cost")
         ax.set_ylabel("Accuracy")
+        if regime == regimes[0]:
+            ax.legend(fontsize=6)
     fig.suptitle("Budget Curves Across Main Regimes")
     fig.tight_layout()
     p = out_dir / "budget_curve_main.png"
@@ -550,6 +672,13 @@ def generate_figures(root: Path, out_dir: Path, metrics: list[RegimeMetrics]) ->
     fig, ax = plt.subplots(figsize=(7.2, 4.5))
     for m in metrics:
         ax.scatter(m.v5_cost, m.v5_acc, s=80, label=f"{REGIME_LABEL[m.regime]} (v5)")
+        ax.scatter(
+            m.token_budget_cost,
+            m.token_budget_acc,
+            s=70,
+            marker="D",
+            label=f"{REGIME_LABEL[m.regime]} (token)",
+        )
     ax.scatter([m.rg_cost for m in metrics], [m.rg_acc for m in metrics], marker="s", s=50, label="Cheap", color="black")
     ax.scatter([m.dpr_cost for m in metrics], [m.dpr_acc for m in metrics], marker="^", s=50, label="Always revise", color="tab:red")
     ax.set_xlabel("Average cost")
@@ -647,6 +776,7 @@ def main() -> None:
     canonical_notes = [
         "Regime names canonicalized to: gsm8k_random_100, hard_gsm8k_100, hard_gsm8k_b2, math500_100.",
         "Adaptive policy canonical main comparator: adaptive_policy_v5 (highest/tying accuracy on all four regimes; ties broken by transparency).",
+        "Token-budget canonical operating point per regime: revise rate closest to adaptive_policy_v7 revise rate, then highest accuracy, then lower cost.",
         "v6/v7 retained in main comparison tables for honesty; v5 is not hidden.",
         "AIME and GPQA are supplementary-only in this export pass.",
         "No API calls or new experiment reruns performed.",
