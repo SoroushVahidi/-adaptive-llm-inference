@@ -1,0 +1,55 @@
+{
+  "run_status": "COMPLETED",
+  "evidence_status": "measured_now",
+  "num_rows": 198,
+  "revise_helpful_prevalence": 0.08080808080808081,
+  "v7_accuracy": 0.45454545454545453,
+  "v6_accuracy": 0.45454545454545453,
+  "v7_minus_v6_accuracy": 0.0,
+  "confidence_router_accuracy": 0.4696969696969697,
+  "confidence_router_threshold": 0.0,
+  "comparison": [
+    {
+      "route": "reasoning_greedy",
+      "accuracy": 0.4696969696969697,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0
+    },
+    {
+      "route": "direct_plus_revise",
+      "accuracy": 0.41919191919191917,
+      "avg_cost": 2.0,
+      "revise_rate": 1.0
+    },
+    {
+      "route": "adaptive_policy_v5",
+      "accuracy": 0.41919191919191917,
+      "avg_cost": 1.9141414141414141,
+      "revise_rate": 0.9141414141414141
+    },
+    {
+      "route": "adaptive_policy_v6",
+      "accuracy": 0.45454545454545453,
+      "avg_cost": 1.0909090909090908,
+      "revise_rate": 0.09090909090909091
+    },
+    {
+      "route": "adaptive_policy_v7",
+      "accuracy": 0.45454545454545453,
+      "avg_cost": 1.207070707070707,
+      "revise_rate": 0.20707070707070707
+    },
+    {
+      "route": "confidence_threshold",
+      "accuracy": 0.4696969696969697,
+      "avg_cost": 1.0,
+      "revise_rate": 0.0
+    },
+    {
+      "route": "oracle",
+      "accuracy": 0.5505050505050505,
+      "avg_cost": 1.0808080808080809,
+      "revise_rate": 0.08080808080808081
+    }
+  ]
+}
