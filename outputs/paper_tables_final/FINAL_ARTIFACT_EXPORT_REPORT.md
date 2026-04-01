@@ -3,33 +3,34 @@
 ## Generated
 
 ### Tables
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/main_results_summary.csv`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/cross_regime_summary.csv`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/policy_comparison_main.csv`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/oracle_headroom_main.csv`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/routing_outcome_breakdown_main.csv`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/budget_curve_main_points.csv`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/baseline_comparison_appendix.csv`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/statistical_support_main.csv`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_tables_final/README.md`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/main_results_summary.csv`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/cross_regime_summary.csv`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/policy_comparison_main.csv`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/oracle_headroom_main.csv`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/routing_outcome_breakdown_main.csv`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/budget_curve_main_points.csv`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/baseline_comparison_appendix.csv`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/statistical_support_main.csv`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_tables_final/README.md`
 
 ### Figures
 
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/cross_regime_accuracy_cost.png`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/routing_headroom_barplot.png`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/routing_outcome_stacked_bar.png`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/oracle_gap_barplot.png`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/budget_curve_main.png`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/threshold_tradeoff_curve.png`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/adaptive_efficiency_scatter.png`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/graphic_abstract.png`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/graphic_abstract.pdf`
-- `/mmfs1/home/sv96/-adaptive-llm-inference/outputs/paper_figures_final/graphic_abstract_caption.txt`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/cross_regime_accuracy_cost.png`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/routing_headroom_barplot.png`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/routing_outcome_stacked_bar.png`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/oracle_gap_barplot.png`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/budget_curve_main.png`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/threshold_tradeoff_curve.png`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/adaptive_efficiency_scatter.png`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/graphic_abstract.png`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/graphic_abstract.pdf`
+- `/home/runner/work/-adaptive-llm-inference/-adaptive-llm-inference/outputs/paper_figures_final/graphic_abstract_caption.txt`
 
 ## Canonical decisions applied
 
 - Regime names canonicalized to: gsm8k_random_100, hard_gsm8k_100, hard_gsm8k_b2, math500_100.
 - Adaptive policy canonical main comparator: adaptive_policy_v5 (highest/tying accuracy on all four regimes; ties broken by transparency).
+- Token-budget canonical operating point per regime: revise rate closest to adaptive_policy_v7 revise rate, then highest accuracy, then lower cost.
 - v6/v7 retained in main comparison tables for honesty; v5 is not hidden.
 - AIME and GPQA are supplementary-only in this export pass.
 - No API calls or new experiment reruns performed.

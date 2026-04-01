@@ -1,0 +1,28 @@
+policy_name: token_budget_router
+length_field: fp_first_pass_output_length
+question_length_field: q_question_length_tokens_approx
+feature_mode: ratio_question_tokens
+
+# Output from tuning; eval reads this file for fixed manuscript thresholds.
+tuned_params_output: outputs/token_budget_router/tuned_thresholds.json
+
+tuning:
+  validation_dataset: data/real_gpqa_diamond_routing_dataset_enriched.csv
+  selection_mode: target_revise_rate
+  target_revise_rate: 0.20
+  max_avg_cost: null
+  # If explicit grids are omitted, tune.py builds a quantile-derived threshold grid.
+  quantile_grid: [0.05, 0.10, 0.15, 0.20, 0.30, 0.70, 0.80, 0.90, 0.95]
+
+evaluation:
+  regimes:
+    gsm8k_random_100: data/real_gsm8k_routing_dataset_enriched.csv
+    hard_gsm8k_100: data/real_hard_gsm8k_routing_dataset_enriched.csv
+    hard_gsm8k_b2: data/real_hard_gsm8k_b2_routing_dataset_enriched.csv
+    math500_100: data/real_math500_routing_dataset_enriched.csv
+
+sweep:
+  min_threshold_grid: [null, 1.5, 2.0, 2.5, 3.0, 3.5]
+  max_threshold_grid: [null, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0]
+
+evaluation_output_dir: outputs/token_budget_router
