@@ -113,12 +113,15 @@ CORE_ORACLE_STRATEGIES: list[str] = [
     "first_pass_then_hint_guided_reason",
 ]
 
-# Multi-action supervised routing (narrow action set for learned controllers).
+# Multi-action supervised routing (canonical 5-action set for learned controllers).
+# See configs/five_action_space.yaml and docs/FIVE_ACTION_ROUTING_PLAN.md for the
+# full design rationale and per-action implementation audit.
 MULTI_ACTION_ORACLE_STRATEGIES: list[str] = [
     "reasoning_greedy",
     "direct_plus_revise",
     "reasoning_then_revise",
     "self_consistency_3",
+    "direct_plus_critique_plus_final",
 ]
 
 

@@ -16,6 +16,7 @@ MULTI_ACTION_ORDER: tuple[str, ...] = (
     "direct_plus_revise",
     "reasoning_then_revise",
     "self_consistency_3",
+    "direct_plus_critique_plus_final",
 )
 
 LAMBDA_VALUES: tuple[float, ...] = (0.0, 0.10, 0.25)
