@@ -1,0 +1,49 @@
+data:
+  candidate_rows_csv: outputs/hybrid_routing_dataset/candidate_rows.csv
+
+output_dir: outputs/hybrid_strategy_recommender/extension_demo
+
+split:
+  seed: 42
+
+features:
+  families:
+    - prompt_features
+    - action_features
+    - interaction_features
+    - heuristic_features
+    - risk_features
+
+heuristics:
+  enabled: true
+  rules:
+    - prune_dominated_cost
+    - cheap_safe
+    - revise_favorable
+    - answer_format_risk
+    - ambiguity_penalty
+
+model:
+  type: gradient_boosting
+  calibration: isotonic
+  params:
+    n_estimators: 150
+    learning_rate: 0.05
+    max_depth: 3
+
+utility:
+  name: p_correct_times_reward_minus_cost
+  lambda: 0.9
+  beta_uncertainty: 0.05
+
+optimizer:
+  type: lambda_search
+  params:
+    iters: 20
+
+budget:
+  avg_budget_per_prompt: 1.2
+
+ablation:
+  run_all: false
+

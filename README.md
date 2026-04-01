@@ -252,6 +252,60 @@ ruff check --fix src/ tests/ scripts/    # auto-fix lint
 
 ---
 
+## Hybrid Strategy Recommender (Modular)
+
+The repository includes a modular hybrid routing subsystem in `src/routing_hybrid/`
+that separates:
+
+- candidate dataset building (`dataset_builder.py`)
+- pluggable features (`features/`)
+- pluggable heuristics (`heuristics/`)
+- pluggable models + optional calibration (`models/`, `calibration.py`)
+- configurable utility definitions (`utility.py`)
+- swappable optimizers (`optimizers/`)
+
+### Quick commands
+
+```bash
+# Build per-(prompt, action) candidate rows from committed routing ML data
+python3 scripts/build_hybrid_routing_dataset.py \
+  --input-csv data/routing_ml_dataset.csv \
+  --output-dir outputs/hybrid_routing_dataset
+
+# Run smoke ablations (heuristics-only / ML-only / hybrid, multiple optimizers)
+python3 scripts/run_hybrid_strategy_recommender.py \
+  --config configs/hybrid_router_smoke.yaml
+```
+
+See `docs/HYBRID_ROUTING_FRAMEWORK.md` for architecture and extension guide.
+
+---
+
+## Improved Tree Router
+
+Tree-focused routing model comparison is available via:
+
+- `scripts/run_improved_tree_router_eval.py`
+- configs:
+  - `configs/tree_router_smoke.yaml`
+  - `configs/tree_router_gsm8k.yaml`
+  - `configs/tree_router_hard_gsm8k.yaml`
+  - `configs/tree_router_hard_gsm8k_b2.yaml`
+  - `configs/tree_router_math500.yaml`
+  - `configs/tree_router_pooled.yaml`
+
+Compared model families:
+
+- decision tree
+- bagging tree ensemble
+- random forest
+- gradient boosting
+- AdaBoost
+
+See `docs/TREE_ROUTER_IMPROVEMENT.md` for details.
+
+---
+
 ## Config Format
 
 ```yaml

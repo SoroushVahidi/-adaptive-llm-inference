@@ -1,0 +1,46 @@
+data:
+  candidate_rows_csv: outputs/hybrid_routing_dataset/candidate_rows.csv
+
+output_dir: outputs/hybrid_strategy_recommender/real_hard_gsm8k
+
+split:
+  seed: 42
+
+features:
+  families:
+    - prompt_features
+    - action_features
+    - interaction_features
+    - heuristic_features
+
+heuristics:
+  enabled: true
+  rules:
+    - prune_dominated_cost
+    - cheap_safe
+    - revise_favorable
+    - answer_format_risk
+
+model:
+  type: random_forest
+  calibration: none
+  params:
+    n_estimators: 200
+    max_depth: 8
+
+utility:
+  name: expected_correct_minus_lambda_cost
+  lambda: 1.0
+  beta_uncertainty: 0.0
+
+optimizer:
+  type: greedy_upgrade
+  params:
+    cost_scale: 100
+
+budget:
+  avg_budget_per_prompt: 1.3
+
+ablation:
+  run_all: false
+

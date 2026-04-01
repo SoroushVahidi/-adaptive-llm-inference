@@ -1,0 +1,22 @@
+data:
+  candidate_rows_csv: outputs/hybrid_routing_dataset/candidate_rows.csv
+  prompt_level_dataset_csv: data/routing_ml_dataset.csv
+  regimes: ["gsm8k_random_100"]
+
+output_dir: outputs/improved_tree_router/gsm8k
+seed: 42
+
+target:
+  type: success_binary
+
+models: [decision_tree, bagging_tree, random_forest, gradient_boosting, adaboost]
+tuning: {enabled: true}
+calibration: {method: sigmoid}
+features: {include_regime_indicator: true, include_action_indicator: true}
+utility: {name: expected_correct_minus_lambda_cost, lambda: 1.0, beta_uncertainty: 0.0}
+downstream:
+  selector: mckp_exact
+  avg_budget_per_prompt: 1.2
+  optimizer_params: {cost_scale: 100}
+training: {scenarios: [per_regime]}
+

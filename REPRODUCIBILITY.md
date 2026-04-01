@@ -113,6 +113,30 @@ python3 scripts/run_new_dataset_smoke.py
 # MMLU-Pro, MuSR, StrategyQA, BBH
 ```
 
+### A11. Hybrid strategy recommender smoke run (fully offline)
+
+```bash
+python3 scripts/build_hybrid_routing_dataset.py \
+    --input-csv data/routing_ml_dataset.csv \
+    --output-dir outputs/hybrid_routing_dataset
+
+python3 scripts/run_hybrid_strategy_recommender.py \
+    --config configs/hybrid_router_smoke.yaml
+# writes: outputs/hybrid_strategy_recommender/smoke/
+
+# extension demo (new model/feature/heuristic/utility/optimizer)
+python3 scripts/run_hybrid_strategy_recommender.py \
+    --config configs/hybrid_router_extension_demo.yaml
+```
+
+### A12. Improved tree-router smoke comparison (fully offline)
+
+```bash
+python3 scripts/run_improved_tree_router_eval.py \
+    --config configs/tree_router_smoke.yaml
+# writes: outputs/improved_tree_router/smoke/
+```
+
 ---
 
 ## Part B — Real-Model Experiments (Requires OPENAI_API_KEY)
@@ -196,6 +220,34 @@ python3 scripts/build_musr_dataset.py
 python3 scripts/build_strategyqa_dataset.py
 python3 scripts/build_bbh_dataset.py
 # writes normalized JSONL + 64-row sample JSONL under data/
+```
+
+### B9. Hybrid recommender on committed real-routing candidates (no API key)
+
+```bash
+python3 scripts/build_hybrid_routing_dataset.py \
+    --input-csv data/routing_ml_dataset.csv \
+    --output-dir outputs/hybrid_routing_dataset
+
+python3 scripts/run_hybrid_strategy_recommender.py \
+    --config configs/hybrid_router_real_gsm8k.yaml
+# alternative configs:
+#   configs/hybrid_router_real_hard_gsm8k.yaml
+#   configs/hybrid_router_real_math500.yaml
+```
+
+### B10. Improved tree-router on pooled main regimes (no API key)
+
+```bash
+python3 scripts/run_improved_tree_router_eval.py \
+    --config configs/tree_router_pooled.yaml
+# writes: outputs/improved_tree_router/pooled/
+
+# optional alternate targets
+python3 scripts/run_improved_tree_router_eval.py \
+    --config configs/tree_router_pooled_gain.yaml
+python3 scripts/run_improved_tree_router_eval.py \
+    --config configs/tree_router_pooled_utility.yaml
 ```
 
 ---
