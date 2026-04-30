@@ -337,4 +337,6 @@ MIT — see [`LICENSE`](LICENSE).
 ## Citation
 
 If you use this code or data in your research, please cite the associated
-manuscript (citation details to be added upon acceptance).
+manuscript. This repository is for the manuscript available at:
+
+https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6510975
