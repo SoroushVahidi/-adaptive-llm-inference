@@ -14,6 +14,8 @@ Older `paper_tables*` / `paper_figures*` directories are historical intermediate
 
 **Adaptive test-time compute allocation for LLM reasoning under budget constraints.**
 
+> **Note:** this is a separate project/manuscript from [frontier-allocation-for-budgeted-llm-inference](https://github.com/SoroushVahidi/frontier-allocation-for-budgeted-llm-inference) (a Performance Evaluation submission on nominal-vs-realized inference budgets). This repository studies adaptive test-time compute routing and targets Knowledge-Based Systems.
+
 Submitted to *Knowledge-Based Systems*.
 
 > **Reading the paper?**  
@@ -268,13 +270,10 @@ that separates:
 
 ```bash
 # Build per-(prompt, action) candidate rows from committed routing ML data
-python3 scripts/build_hybrid_routing_dataset.py \
-  --input-csv data/routing_ml_dataset.csv \
-  --output-dir outputs/hybrid_routing_dataset
+python3 scripts/build_hybrid_routing_dataset.py   --input-csv data/routing_ml_dataset.csv   --output-dir outputs/hybrid_routing_dataset
 
 # Run smoke ablations (heuristics-only / ML-only / hybrid, multiple optimizers)
-python3 scripts/run_hybrid_strategy_recommender.py \
-  --config configs/hybrid_router_smoke.yaml
+python3 scripts/run_hybrid_strategy_recommender.py   --config configs/hybrid_router_smoke.yaml
 ```
 
 See `docs/HYBRID_ROUTING_FRAMEWORK.md` for architecture and extension guide.
