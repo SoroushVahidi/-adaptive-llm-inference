@@ -1,4 +1,28 @@
-# Adaptive LLM Inference
+# When to Revise: Cost-Aware Adaptive Routing for LLM Reasoning
+
+**In plain words.** Asking an LLM to revise or re-check its answer often improves accuracy on math word problems, but it costs extra calls. Given a fixed budget for a batch of questions, can a lightweight policy decide *per question* whether the cheap single pass is enough or a revision is worth paying for? This repository implements and evaluates such routing policies on GSM8K and MATH-500 subsets. It includes offline, deterministic regeneration of every paper table and figure from committed results (no API key needed), plus optional real-model runs.
+
+> Separate project from [frontier-allocation-for-budgeted-llm-inference](https://github.com/SoroushVahidi/frontier-allocation-for-budgeted-llm-inference), which is about measuring realized vs. nominal budgets.
+
+## Paper
+
+- **Preprint:** S. Vahidi. *When to Revise: Cost-Aware Adaptive Routing for LLM Reasoning.* SSRN, 2026. [ssrn.com/abstract=6510975](https://ssrn.com/abstract=6510975) · [doi:10.2139/ssrn.6510975](https://doi.org/10.2139/ssrn.6510975). Not yet peer-reviewed.
+
+```bibtex
+@misc{vahidi2026whentorevise,
+  author = {Vahidi, Soroush},
+  title  = {When to Revise: Cost-Aware Adaptive Routing for {LLM} Reasoning},
+  year   = {2026},
+  note   = {SSRN preprint},
+  doi    = {10.2139/ssrn.6510975}
+}
+```
+
+Quick start (offline): `python3 scripts/generate_final_manuscript_artifacts.py` regenerates the final tables and figures in `outputs/paper_tables_final/` and `outputs/paper_figures_final/`.
+
+---
+
+> The detailed documentation below is kept from the previous README, with only small factual updates.
 
 ## Manuscript Quickstart
 
